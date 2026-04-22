@@ -1,0 +1,24 @@
+{
+  "name": "TourVision - AI Tourist Guide App",
+  "short_name": "TourVision",
+  "description": "AI-powered tourist guide with AR, route planning, QR experiences, and offline-ready place pages.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B1F19",
+  "theme_color": "#60A5FA",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='44' fill='%231A6B4A'/%3E%3Cpath d='M40 54h112v18h-47v66H87V72H40z' fill='%23F7F5EF'/%3E%3Ccircle cx='145' cy='146' r='19' fill='%23F5A623'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='110' fill='%231A6B4A'/%3E%3Cpath d='M128 150h256v48H280v176h-48V198H128z' fill='%23F7F5EF'/%3E%3Ccircle cx='388' cy='388' r='46' fill='%23F5A623'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

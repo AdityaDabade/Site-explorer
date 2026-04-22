@@ -1,0 +1,39 @@
+{
+  "name": "tourvision-backend",
+  "version": "1.0.0",
+  "description": "Node.js + Express backend for TourVision AI Tourist Guide",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "check": "node --check server.js"
+  },
+  "keywords": [
+    "tourvision",
+    "express",
+    "mongodb",
+    "socket.io",
+    "tourism"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@turf/turf": "^7.2.0",
+    "axios": "^1.8.4",
+    "bcryptjs": "^2.4.3",
+    "bull": "^4.16.5",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ioredis": "^5.5.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.12.2",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.2",
+    "node-cron": "^4.1.0",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}

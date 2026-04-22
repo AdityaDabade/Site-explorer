@@ -1,0 +1,1 @@
+import{k as s}from"./index-DL_Qkjdi.js";const t=e=>s.get("/places",{params:e}),n=e=>s.get(`/places/${e}`),o=e=>s.get(`/places/${e}/ai-content`),g=e=>s.get("/places/nearby",{params:e}),l=e=>s.post("/qr/scan",e),p=(e,a)=>s.post(`/places/${e}/geofence`,a);export{n as a,o as b,p as c,g as d,t as g,l as s};
