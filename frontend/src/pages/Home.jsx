@@ -1,209 +1,235 @@
-import { useEffect, useMemo, useState } from 'react';
-import PropTypes from 'prop-types';
-import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
-import { getPlaces, scanQr } from '../api/placeApi';
-import { extractArray as sharedExtractArray, extractData, extractMessage } from '../api/responseUtils';
-import QRScanner from '../components/qr/QRScanner';
-import { useLocationContext } from '../context/LocationContext';
+import { useEffect, useMemo, useState } from "react";
+import PropTypes from "prop-types";
+import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import { getPlaces, scanQr } from "../api/placeApi";
+import {
+  extractArray as sharedExtractArray,
+  extractData,
+  extractMessage,
+} from "../api/responseUtils";
+import QRScanner from "../components/qr/QRScanner";
+import { useLocationContext } from "../context/LocationContext";
 
 const HERO_IMAGE =
-  'https://images.unsplash.com/photo-1539635278303-d4002c07eae3?w=1920&auto=format&fit=crop&q=80';
+  "https://images.unsplash.com/photo-1539635278303-d4002c07eae3?w=1920&auto=format&fit=crop&q=80";
 
-const CATEGORY_PILLS = ['Monuments', 'Nature', 'Food', 'Culture', 'Beaches'];
+const CATEGORY_PILLS = ["Monuments", "Nature", "Food", "Culture", "Beaches"];
 
 const CATEGORIES = [
   {
-    title: 'Monuments',
-    image: 'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=600&auto=format&fit=crop&q=80',
+    title: "Monuments",
+    image:
+      "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=600&auto=format&fit=crop&q=80",
   },
   {
-    title: 'Nature',
-    image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=600&auto=format&fit=crop&q=80',
+    title: "Nature",
+    image:
+      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=600&auto=format&fit=crop&q=80",
   },
   {
-    title: 'Food Tours',
-    image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&auto=format&fit=crop&q=80',
+    title: "Food Tours",
+    image:
+      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&auto=format&fit=crop&q=80",
   },
   {
-    title: 'AR Experiences',
-    image: 'https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=600&auto=format&fit=crop&q=80',
+    title: "AR Experiences",
+    image:
+      "https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=600&auto=format&fit=crop&q=80",
   },
   {
-    title: 'Cultural Sites',
-    image: 'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=600&auto=format&fit=crop&q=80',
+    title: "Cultural Sites",
+    image:
+      "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=600&auto=format&fit=crop&q=80",
   },
   {
-    title: 'Hidden Gems',
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600&auto=format&fit=crop&q=80',
+    title: "Hidden Gems",
+    image:
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600&auto=format&fit=crop&q=80",
   },
 ];
 
 const COLLECTIONS = [
   {
-    title: 'Top UNESCO Sites',
-    count: '28 experiences',
-    image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=600&auto=format&fit=crop&q=80',
+    title: "Top UNESCO Sites",
+    count: "28 experiences",
+    image:
+      "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=600&auto=format&fit=crop&q=80",
   },
   {
-    title: 'AR-Ready Monuments',
-    count: '14 immersive tours',
-    image: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=600&auto=format&fit=crop&q=80',
+    title: "AR-Ready Monuments",
+    count: "14 immersive tours",
+    image:
+      "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=600&auto=format&fit=crop&q=80",
   },
   {
-    title: 'Hidden Gems',
-    count: '36 local favorites',
-    image: 'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=600&auto=format&fit=crop&q=80',
+    title: "Hidden Gems",
+    count: "36 local favorites",
+    image:
+      "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=600&auto=format&fit=crop&q=80",
   },
   {
-    title: 'Budget-Friendly Tours',
-    count: '42 easy escapes',
-    image: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&auto=format&fit=crop&q=80',
+    title: "Budget-Friendly Tours",
+    count: "42 easy escapes",
+    image:
+      "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&auto=format&fit=crop&q=80",
   },
   {
-    title: 'Family Adventures',
-    count: '19 all-ages routes',
-    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&auto=format&fit=crop&q=80',
+    title: "Family Adventures",
+    count: "19 all-ages routes",
+    image:
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&auto=format&fit=crop&q=80",
   },
 ];
 
 const FEATURE_ROWS = [
   {
-    badge: 'AUGMENTED REALITY',
-    title: 'Step Inside History',
-    body: 'Bring ruins, plazas, forts, and galleries to life with scene-aware overlays that tell richer stories the moment you arrive.',
-    cta: 'Try AR Tour',
-    image: 'https://images.unsplash.com/photo-1562774053-701939374585?w=800&auto=format&fit=crop',
+    badge: "AUGMENTED REALITY",
+    title: "Step Inside History",
+    body: "Bring ruins, plazas, forts, and galleries to life with scene-aware overlays that tell richer stories the moment you arrive.",
+    cta: "Try AR Tour",
+    image:
+      "https://images.unsplash.com/photo-1562774053-701939374585?w=800&auto=format&fit=crop",
     bullets: [
-      '3D reconstructions over real landmarks',
-      'Guided camera checkpoints',
-      'Captions and narration in sync',
+      "3D reconstructions over real landmarks",
+      "Guided camera checkpoints",
+      "Captions and narration in sync",
     ],
   },
   {
-    badge: 'AI GUIDE',
-    title: 'Your Personal Historian',
-    body: 'Ask follow-up questions, unlock place-specific narration, and get smart recommendations that adapt to where you are and what you like.',
-    cta: 'Meet Your AI Guide',
-    image: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=800&auto=format&fit=crop',
+    badge: "AI GUIDE",
+    title: "Your Personal Historian",
+    body: "Ask follow-up questions, unlock place-specific narration, and get smart recommendations that adapt to where you are and what you like.",
+    cta: "Meet Your AI Guide",
+    image:
+      "https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=800&auto=format&fit=crop",
     bullets: [
-      'Location-aware storytelling',
-      'Multilingual support',
-      'Contextual nearby suggestions',
+      "Location-aware storytelling",
+      "Multilingual support",
+      "Contextual nearby suggestions",
     ],
   },
   {
-    badge: 'SMART PLANNING',
-    title: 'One App, Entire Journey',
-    body: 'Plan routes, coordinate group travel, estimate costs, and keep every landmark, booking, and memory flowing together in one timeline.',
-    cta: 'Plan a Trip',
-    image: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&auto=format&fit=crop',
+    badge: "SMART PLANNING",
+    title: "One App, Entire Journey",
+    body: "Plan routes, coordinate group travel, estimate costs, and keep every landmark, booking, and memory flowing together in one timeline.",
+    cta: "Plan a Trip",
+    image:
+      "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&auto=format&fit=crop",
     bullets: [
-      'Collaborative itinerary planning',
-      'Weather and road alerts',
-      'Shared budgets and travel stories',
+      "Collaborative itinerary planning",
+      "Weather and road alerts",
+      "Shared budgets and travel stories",
     ],
   },
 ];
 
 const REVIEW_CARDS = [
   {
-    name: 'Aditi',
-    region: 'India',
-    date: 'March 2026',
-    title: 'Best city guide we used this year',
-    text: 'The AR layer at the fort completely changed the experience. We understood the place in minutes and the route suggestions were spot on.',
-    place: 'Amber Fort',
+    name: "Aditi",
+    region: "India",
+    date: "March 2026",
+    title: "Best city guide we used this year",
+    text: "The AR layer at the fort completely changed the experience. We understood the place in minutes and the route suggestions were spot on.",
+    place: "Amber Fort",
   },
   {
-    name: 'Luca',
-    region: 'Italy',
-    date: 'February 2026',
-    title: 'Felt like a local companion',
-    text: 'The app balanced maps, narration, and discovery really well. It was clean, fast, and surprisingly helpful when we changed plans.',
-    place: 'Jaipur Old City',
+    name: "Luca",
+    region: "Italy",
+    date: "February 2026",
+    title: "Felt like a local companion",
+    text: "The app balanced maps, narration, and discovery really well. It was clean, fast, and surprisingly helpful when we changed plans.",
+    place: "Jaipur Old City",
   },
   {
-    name: 'Maya',
-    region: 'United States',
-    date: 'January 2026',
-    title: 'Loved the stress-free planning',
-    text: 'We used TourVision for places, route planning, and trip splitting. Everything felt polished and easy to trust.',
-    place: 'Gateway of India',
+    name: "Maya",
+    region: "United States",
+    date: "January 2026",
+    title: "Loved the stress-free planning",
+    text: "We used TourVision for places, route planning, and trip splitting. Everything felt polished and easy to trust.",
+    place: "Gateway of India",
   },
 ];
 
 const FALLBACK_PLACES = [
   {
     id: 1,
-    name: 'Amber Fort',
-    location_name: 'Jaipur, India',
-    category: 'Historic Fort',
+    name: "Amber Fort",
+    location_name: "Jaipur, India",
+    category: "Historic Fort",
     distance: 2.1,
     rating: 4.9,
     review_count: 2341,
     price: 0,
     free_entry: true,
     has_ar: true,
-    image: 'https://images.unsplash.com/photo-1477587458883-47145ed94245?w=900&auto=format&fit=crop&q=80',
+    image:
+      "https://images.unsplash.com/photo-1477587458883-47145ed94245?w=900&auto=format&fit=crop&q=80",
     score: 9.1,
   },
   {
     id: 2,
-    name: 'Marine Drive',
-    location_name: 'Mumbai, India',
-    category: 'Waterfront',
+    name: "Marine Drive",
+    location_name: "Mumbai, India",
+    category: "Waterfront",
     distance: 3.4,
     rating: 4.8,
     review_count: 1820,
     price: 250,
     free_entry: false,
     has_ar: false,
-    image: 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=900&auto=format&fit=crop&q=80',
+    image:
+      "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=900&auto=format&fit=crop&q=80",
     score: 8.9,
   },
   {
     id: 3,
-    name: 'Humayun Tomb',
-    location_name: 'Delhi, India',
-    category: 'UNESCO Site',
+    name: "Humayun Tomb",
+    location_name: "Delhi, India",
+    category: "UNESCO Site",
     distance: 5.3,
     rating: 4.9,
     review_count: 3011,
     price: 300,
     free_entry: false,
     has_ar: true,
-    image: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=900&auto=format&fit=crop&q=80',
+    image:
+      "https://images.unsplash.com/photo-1587474260584-136574528ed5?w=900&auto=format&fit=crop&q=80",
     score: 9.4,
   },
   {
     id: 4,
-    name: 'Sunset Cliffs',
-    location_name: 'Goa, India',
-    category: 'Nature Escape',
+    name: "Sunset Cliffs",
+    location_name: "Goa, India",
+    category: "Nature Escape",
     distance: 1.8,
     rating: 4.7,
     review_count: 954,
     price: 0,
     free_entry: true,
     has_ar: false,
-    image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop&q=80',
+    image:
+      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop&q=80",
     score: 8.8,
   },
 ];
 
-const REGION_FILTERS = ['All', 'India', 'Europe', 'Asia', 'Americas', 'Middle East'];
+const REGION_FILTERS = [
+  "All",
+  "India",
+  "Europe",
+  "Asia",
+  "Americas",
+  "Middle East",
+];
 
 function normalizePlace(place, index) {
   return {
     id: place.id || index + 1,
     name: place.name || place.title || `Place ${index + 1}`,
     location_name:
-      place.location_name ||
-      place.location ||
-      place.city ||
-      'TourVision destination',
-    category: place.category || place.type || 'Experience',
+      place.location_name || place.city || "TourVision destination",
+    category: place.category || place.type || "Experience",
     distance: Number(place.distance || 0),
     rating: Number(place.rating || 4.8),
     review_count: place.review_count || place.reviews || 1200 + index * 117,
@@ -216,9 +242,7 @@ function normalizePlace(place, index) {
       FALLBACK_PLACES[index % FALLBACK_PLACES.length].image,
     score: Number(place.score || 8.7 + (index % 5) * 0.2).toFixed(1),
     region:
-      place.region ||
-      place.country ||
-      (index % 2 === 0 ? 'India' : 'Asia'),
+      place.region || place.country || (index % 2 === 0 ? "India" : "Asia"),
   };
 }
 
@@ -232,16 +256,13 @@ function extractArray(response) {
   if (d && Array.isArray(d.results)) return d.results;
   if (d && Array.isArray(d.items)) return d.items;
   if (d && Array.isArray(d.data)) return d.data;
-  console.warn('extractArray: unexpected shape', response);
+  console.warn("extractArray: unexpected shape", response);
   return [];
 }
 
 function ListingCard({ onOpen, onToggleSave, place, saved = false }) {
   return (
-    <article
-      className="card-lift cursor-pointer"
-      onClick={() => onOpen(place)}
-    >
+    <article className="card-lift cursor-pointer" onClick={() => onOpen(place)}>
       <div className="relative aspect-[20/19] overflow-hidden rounded-[var(--r-lg)] bg-[var(--c-surface-inset)]">
         <img
           alt={place.name}
@@ -257,7 +278,7 @@ function ListingCard({ onOpen, onToggleSave, place, saved = false }) {
           className="absolute right-4 top-4 text-2xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]"
           aria-label="Save place"
         >
-          {saved ? '♥' : '♡'}
+          {saved ? "♥" : "♡"}
         </button>
       </div>
 
@@ -272,7 +293,7 @@ function ListingCard({ onOpen, onToggleSave, place, saved = false }) {
         <div className="mt-1 flex items-center justify-between gap-3 text-[13px] text-[var(--c-text-secondary)]">
           <span>{place.location_name}</span>
           <span className="badge badge-neutral">
-            {place.distance ? `${place.distance.toFixed(1)} km` : 'Nearby'}
+            {place.distance ? `${place.distance.toFixed(1)} km` : "Nearby"}
           </span>
         </div>
 
@@ -284,13 +305,13 @@ function ListingCard({ onOpen, onToggleSave, place, saved = false }) {
         </div>
 
         <div className="mt-2 text-[13px] text-[var(--c-text-secondary)]">
-          ★ {place.rating.toFixed(1)} ·{' '}
+          ★ {place.rating.toFixed(1)} ·{" "}
           {Number(place.review_count).toLocaleString()} reviews
         </div>
 
         <div className="mt-2 font-semibold text-[var(--c-text-primary)]">
           {place.free_entry
-            ? 'From Rs 0 · Free Entry'
+            ? "From Rs 0 · Free Entry"
             : `Rs ${place.price} / person`}
         </div>
       </div>
@@ -324,12 +345,12 @@ export default function Home() {
 
   const [trendingPlaces, setTrendingPlaces] = useState(FALLBACK_PLACES);
   const [loading, setLoading] = useState(false);
-  const [activeRegion, setActiveRegion] = useState('All');
+  const [activeRegion, setActiveRegion] = useState("All");
   const [savedIds, setSavedIds] = useState([]);
   const [search, setSearch] = useState({
-    destination: '',
-    date: 'Any week',
-    travelers: 'Any travelers',
+    destination: "",
+    date: "Any week",
+    travelers: "Any travelers",
   });
   const [scannerOpen, setScannerOpen] = useState(false);
 
@@ -352,7 +373,7 @@ export default function Home() {
         }
       } catch (error) {
         if (isMounted) {
-          console.warn('Trending places fallback engaged.', error);
+          console.warn("Trending places fallback engaged.", error);
           // FALLBACK_PLACES already set as initial state — nothing else needed
         }
       } finally {
@@ -361,32 +382,33 @@ export default function Home() {
     };
 
     loadTrending();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [location]);
 
   const filteredPlaces = useMemo(() => {
-    if (activeRegion === 'All') return trendingPlaces;
+    if (activeRegion === "All") return trendingPlaces;
     return trendingPlaces.filter((p) =>
       `${p.region} ${p.location_name}`
         .toLowerCase()
-        .includes(activeRegion.toLowerCase())
+        .includes(activeRegion.toLowerCase()),
     );
   }, [activeRegion, trendingPlaces]);
 
-  const handleSearchSubmit = () => navigate('/nearby');
+  const handleSearchSubmit = () => navigate("/nearby");
 
   const handleQrDetected = async (decodedText) => {
     try {
       const response = await scanQr({ qr_data: decodedText });
       const data = extractData(response);
-      const placeId =
-        data?.place_id || data?.placeId;
-      if (!placeId) throw new Error('QR scan did not return a place id.');
+      const placeId = data?.place_id || data?.placeId;
+      if (!placeId) throw new Error("QR scan did not return a place id.");
       setScannerOpen(false);
-      toast.success('Opening your landmark experience.');
+      toast.success("Opening your landmark experience.");
       navigate(`/place/${placeId}`);
     } catch (error) {
-      toast.error(extractMessage(error, 'Unable to process this QR code.'));
+      toast.error(extractMessage(error, "Unable to process this QR code."));
     }
   };
 
@@ -397,8 +419,8 @@ export default function Home() {
         className="relative flex min-h-[100svh] items-end overflow-hidden"
         style={{
           backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.75) 100%), url(${HERO_IMAGE})`,
-          backgroundPosition: 'center',
-          backgroundSize: 'cover',
+          backgroundPosition: "center",
+          backgroundSize: "cover",
         }}
       >
         <div className="container w-full pb-[120px]">
@@ -493,7 +515,7 @@ export default function Home() {
               <button
                 type="button"
                 className="btn-ghost btn-sm"
-                onClick={() => navigate('/trip-planner')}
+                onClick={() => navigate("/trip-planner")}
               >
                 Start planning
               </button>
@@ -555,7 +577,7 @@ export default function Home() {
             <button
               type="button"
               className="text-sm font-semibold text-[var(--c-primary)]"
-              onClick={() => navigate('/nearby')}
+              onClick={() => navigate("/nearby")}
             >
               Show all →
             </button>
@@ -567,7 +589,7 @@ export default function Home() {
               <button
                 key={region}
                 type="button"
-                className={`chip ${activeRegion === region ? 'active' : ''}`}
+                className={`chip ${activeRegion === region ? "active" : ""}`}
                 onClick={() => setActiveRegion(region)}
               >
                 {region}
@@ -596,9 +618,7 @@ export default function Home() {
                   onOpen={(p) => navigate(`/place/${p.id}`)}
                   onToggleSave={(id) =>
                     setSavedIds((s) =>
-                      s.includes(id)
-                        ? s.filter((x) => x !== id)
-                        : [...s, id]
+                      s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
                     )
                   }
                 />
@@ -650,7 +670,7 @@ export default function Home() {
             <div
               key={feature.title}
               className={`grid items-center gap-8 lg:grid-cols-2 ${
-                index % 2 === 1 ? 'lg:[&>div:first-child]:order-2' : ''
+                index % 2 === 1 ? "lg:[&>div:first-child]:order-2" : ""
               }`}
             >
               <div className="overflow-hidden rounded-[var(--r-2xl)]">
@@ -790,9 +810,7 @@ export default function Home() {
         <div className="container">
           <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
             <div>
-              <p className="font-heading text-2xl font-extrabold">
-                TourVision
-              </p>
+              <p className="font-heading text-2xl font-extrabold">TourVision</p>
               <p className="mt-4 max-w-[260px] text-white/65">
                 Travel with AI-powered stories, AR experiences, and smart
                 planning from discovery to arrival.
@@ -801,15 +819,20 @@ export default function Home() {
             <div>
               <p className="font-heading text-lg font-bold">Discover</p>
               <ul className="mt-4 space-y-3 text-white/65">
-                {['Trending places', 'Collections', 'AR experiences', 'Nearby guides'].map(
-                  (item) => <li key={item}>{item}</li>
-                )}
+                {[
+                  "Trending places",
+                  "Collections",
+                  "AR experiences",
+                  "Nearby guides",
+                ].map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
               </ul>
             </div>
             <div>
               <p className="font-heading text-lg font-bold">Company</p>
               <ul className="mt-4 space-y-3 text-white/65">
-                {['About', 'Careers', 'Partners', 'Press'].map((item) => (
+                {["About", "Careers", "Partners", "Press"].map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
@@ -818,10 +841,10 @@ export default function Home() {
               <p className="font-heading text-lg font-bold">Support</p>
               <ul className="mt-4 space-y-3 text-white/65">
                 {[
-                  'Help Center',
-                  'Accessibility',
-                  'Cancellation options',
-                  'Contact us',
+                  "Help Center",
+                  "Accessibility",
+                  "Cancellation options",
+                  "Contact us",
                 ].map((item) => (
                   <li key={item}>{item}</li>
                 ))}

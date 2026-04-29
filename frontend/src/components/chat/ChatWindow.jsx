@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { sendChatMessage } from '../../api/chatApi';
+import { sendMessage } from '../../api/chatApi';
 import { extractData, extractMessage } from '../../api/responseUtils';
 import ChatMessage from './ChatMessage';
 import Loader from '../common/Loader';
@@ -95,7 +95,7 @@ export default function ChatWindow({ contextPlaceId, isOpen, onClose }) {
     setLoading(true);
 
     try {
-      const response = await sendChatMessage({
+      const response = await sendMessage({
         message: outgoingMessage,
         place_id: contextPlaceId || undefined,
         geofence_zone: 'general'

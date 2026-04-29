@@ -7,28 +7,9 @@ import MapView from '../components/map/MapView';
 import PlaceCard from '../components/tour/PlaceCard';
 import { useLocationContext } from '../context/LocationContext';
 import { scorePlace } from '../utils/scoreUtils';
+import { normalizePlace } from '../utils/normalizePlace';
 
 const FILTER_CHIPS = ['All', 'Monuments', 'Nature', 'Food', 'AR', 'Free Entry', 'Near Me'];
-
-function normalizePlace(place, index) {
-  return {
-    ...place,
-    id: place.id || index + 1,
-    name: place.name || place.title || `Place ${index + 1}`,
-    location_name: place.location_name || place.location || place.city || 'TourVision destination',
-    category: place.category || place.type || 'Experience',
-    rating: Number(place.rating || 4.8),
-    distance: Number(place.distance || 0),
-    score: Number(place.score || 8.7 + (index % 5) * 0.2),
-    review_count: place.review_count || place.reviews || 1400 + index * 84,
-    price: Number(place.price || place.entry_fee || 0),
-    has_ar: Boolean(place.has_ar || place.ar_model_url),
-    image:
-      place.image ||
-      place.images?.[0] ||
-      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop&q=80'
-  };
-}
 
 /**
  * Airbnb-style explore results page with filters, map split, and mobile map sheet.

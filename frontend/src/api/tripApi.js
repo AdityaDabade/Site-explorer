@@ -13,11 +13,9 @@ export const getExpenses = (tripId) => axiosInstance.get(`/trip/${tripId}/expens
 
 export const splitExpenses = (tripId) => axiosInstance.get(`/trip/${tripId}/expenses/split`);
 
-export const uploadTravelStory = (formData) =>
+export const uploadMedia = (formData) =>
   axiosInstance.post('/trip/stories', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }
   });
-
-export const uploadMedia = uploadTravelStory;

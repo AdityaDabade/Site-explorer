@@ -1,0 +1,55 @@
+import PropTypes from 'prop-types';
+import { Link } from 'react-router-dom';
+
+/**
+ * Displays place header with breadcrumb, title, rating, and badges.
+ */
+export default function PlaceHeader({ place, badges }) {
+  const price = Number(place?.price || place?.entry_fee || 0);
+
+  return (
+    <div>
+      <div className="mb-5 flex items-center gap-2 text-sm text-[var(--c-text-secondary)]">
+        <Link to="/">Home</Link>
+        <span>/</span>
+        <Link to="/nearby">Explore</Link>
+        <span>/</span>
+        <span className="text-[var(--c-text-primary)]">{place?.name}</span>
+      </div>
+
+      <div>
+        <div className="flex flex-wrap items-center gap-3">
+          {badges}
+          <span className="badge badge-green">{price === 0 ? 'Free Entry' : `Rs ${price} / person`}</span>
+        </div>
+
+        <h1 className="mt-4">{place?.name}</h1>
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[var(--c-text-secondary)]">
+          <span>{place?.location_name || place?.location || place?.city || 'TourVision destination'}</span>
+          <span>•</span>
+          <span>{'\u2605'} {Number(place?.rating || 4.8).toFixed(1)}</span>
+          <span>•</span>
+          <span>{Number(place?.review_count || 2341).toLocaleString()} reviews</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+PlaceHeader.propTypes = {
+  badges: PropTypes.node,
+  place: PropTypes.shape({
+    city: PropTypes.string,
+    entry_fee: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    location: PropTypes.string,
+    location_name: PropTypes.string,
+    name: PropTypes.string.isRequired,
+    price: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    rating: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    review_count: PropTypes.oneOfType([PropTypes.number, PropTypes.string])
+  }).isRequired
+};
+
+PlaceHeader.defaultProps = {
+  badges: null
+};
