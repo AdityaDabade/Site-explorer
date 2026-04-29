@@ -1,20 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
-function GlobeIcon() {
-  return (
-    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
-    </svg>
-  );
-}
-
 function MenuIcon() {
   return (
-    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+    <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
       <path d="M4 7h16M4 12h16M4 17h16" />
     </svg>
   );
@@ -22,121 +13,37 @@ function MenuIcon() {
 
 function SearchIcon() {
   return (
-    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+    <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
       <circle cx="11" cy="11" r="7" />
       <path d="m20 20-3.5-3.5" />
     </svg>
   );
 }
 
-function SearchOverlay({ isMobile, onClose, onSubmit }) {
-  const [form, setForm] = useState({
-    destination: '',
-    date: 'Any week',
-    travelers: 'Any travelers'
-  });
-
+function BellIcon() {
   return (
-    <div className={isMobile ? 'bottom-sheet-overlay' : 'fixed inset-0 z-[70] bg-black/25 backdrop-blur-[2px]'}>
-      <div className={isMobile ? 'bottom-sheet' : 'mx-auto mt-24 w-full max-w-3xl rounded-[24px] bg-white p-6 shadow-[var(--shadow-modal)]'}>
-        {isMobile ? <div className="bottom-sheet-handle" /> : null}
-
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--c-text-secondary)]">Search TourVision</p>
-            <h2 className="mt-2 text-[clamp(1.5rem,3vw,2rem)] font-extrabold">Find places worth exploring</h2>
-          </div>
-          <button type="button" className="btn-outline btn-sm" onClick={onClose}>
-            Close
-          </button>
-        </div>
-
-        <div className="mt-6 grid gap-4 md:grid-cols-[1.25fr_0.9fr_0.9fr]">
-          <label className="input-wrap">
-            <span className="input-label">Destination</span>
-            <input
-              className="input"
-              placeholder="Search destinations"
-              value={form.destination}
-              onChange={(event) => setForm((current) => ({ ...current, destination: event.target.value }))}
-            />
-          </label>
-
-          <label className="input-wrap">
-            <span className="input-label">When</span>
-            <select
-              className="input"
-              value={form.date}
-              onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))}
-            >
-              <option>Any week</option>
-              <option>This weekend</option>
-              <option>Next week</option>
-              <option>Next month</option>
-            </select>
-          </label>
-
-          <label className="input-wrap">
-            <span className="input-label">Travelers</span>
-            <select
-              className="input"
-              value={form.travelers}
-              onChange={(event) => setForm((current) => ({ ...current, travelers: event.target.value }))}
-            >
-              <option>Any travelers</option>
-              <option>1 traveler</option>
-              <option>2 travelers</option>
-              <option>Family</option>
-              <option>Group</option>
-            </select>
-          </label>
-        </div>
-
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <div className="filter-chips pb-0">
-            {['🏛 Monuments', '🌿 Nature', '🍜 Food', '🎭 Culture', '🏖 Beaches'].map((item) => (
-              <span key={item} className="chip">{item}</span>
-            ))}
-          </div>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => onSubmit(form)}
-          >
-            <SearchIcon />
-            Search
-          </button>
-        </div>
-      </div>
-    </div>
+    <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
   );
 }
 
-SearchOverlay.propTypes = {
-  isMobile: PropTypes.bool,
-  onClose: PropTypes.func.isRequired,
-  onSubmit: PropTypes.func.isRequired
-};
-
-SearchOverlay.defaultProps = {
-  isMobile: false
-};
-
 /**
- * Airbnb-inspired sticky navbar with search pill, user menu, and route-aware behavior.
+ * Modern mobile-first navbar with Airbnb-inspired design.
+ * Features sticky positioning, search pill, and profile menu.
  */
-export default function Navbar({ onChatOpen, user }) {
+export default function Navbar({ onChatOpen = () => {}, onMenuToggle = () => {}, user = null }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, logout } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const menuRef = useRef(null);
   const isAdminRoute = location.pathname.startsWith('/admin');
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 80);
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
     handleScroll();
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -148,54 +55,22 @@ export default function Navbar({ onChatOpen, user }) {
         setMenuOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleOutside);
     return () => document.removeEventListener('mousedown', handleOutside);
   }, []);
 
-  const menuItems = useMemo(
-    () =>
-      isAuthenticated
-        ? [
-            { label: 'Trips', action: () => navigate('/trip-planner') },
-            { label: 'Wishlist', action: () => navigate('/expenses') },
-            { label: 'Help Center', action: onChatOpen },
-            { label: 'Logout', action: logout }
-          ]
-        : [
-            { label: 'Sign in', action: () => navigate('/login') },
-            { label: 'Sign up', action: () => navigate('/signup') },
-            { label: 'Help Center', action: onChatOpen },
-            { label: 'Trips', action: () => navigate('/trip-planner') },
-            { label: 'Wishlist', action: () => navigate('/expenses') }
-          ],
-    [isAuthenticated, logout, navigate, onChatOpen]
-  );
-
-  const handleSearchSubmit = () => {
-    setSearchOpen(false);
-    navigate('/nearby');
-  };
-
   if (isAdminRoute) {
     return (
-      <header className={`sticky top-0 z-50 border-b border-[var(--c-border)] bg-white ${isScrolled ? 'shadow-[var(--shadow-card)]' : ''}`}>
-        <div className="container flex h-16 items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link to="/" className="flex items-center gap-2 font-heading text-lg font-bold text-slate-900">
+            <span>🌍</span>
+            <span className="hidden sm:inline">TourVision Admin</span>
+          </Link>
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--c-primary-light)] text-lg">🧭</span>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--c-text-secondary)]">TourVision Admin</p>
-              <p className="font-[var(--font-heading)] text-lg font-extrabold text-[var(--c-text-primary)]">Operations</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button type="button" className="btn-outline btn-sm" onClick={onChatOpen}>
-              AI Help
+            <button type="button" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={onChatOpen}>
+              Help
             </button>
-            <div className="rounded-full border border-[var(--c-border)] px-4 py-2 text-sm font-semibold">
-              {user?.name || user?.email || 'Admin'}
-            </div>
           </div>
         </div>
       </header>
@@ -203,106 +78,151 @@ export default function Navbar({ onChatOpen, user }) {
   }
 
   return (
-    <>
-      <header className={`sticky top-0 z-50 border-b border-[var(--c-border)] bg-white ${isScrolled ? 'shadow-[var(--shadow-card)]' : ''}`}>
-        <div className="container flex h-16 items-center justify-between gap-3 md:h-20">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="text-2xl">🧭</span>
-            <span className="font-heading text-xl font-extrabold text-[var(--c-primary)]">TourVision</span>
-          </Link>
-
+    <header className={`sticky top-0 z-40 border-b border-slate-200 bg-white transition-shadow duration-300 ${isScrolled ? 'shadow-sm' : ''}`}>
+      <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6 md:h-16 lg:px-8">
+        <div className="flex flex-shrink-0 items-center gap-3">
           <button
             type="button"
-            onClick={() => setSearchOpen(true)}
-            className="airbnb-search-shadow hidden min-w-[360px] items-center rounded-full border border-[var(--c-border)] bg-white px-4 py-3 text-left md:flex"
+            onClick={onMenuToggle}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-all duration-300 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/60 focus-visible:ring-offset-2 lg:hidden"
+            aria-label="Open navigation menu"
           >
-            <span className="flex-1 text-sm font-semibold">Search destinations</span>
-            <span className="px-4 text-sm text-[var(--c-text-secondary)]">Any week</span>
-            <span className="border-l border-[var(--c-border)] pl-4 text-sm text-[var(--c-text-secondary)]">Any travelers</span>
-            <span className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--c-primary)] text-white">
-              <SearchIcon />
-            </span>
+            <MenuIcon />
           </button>
 
-          <div className="flex items-center gap-2 md:hidden">
+          <Link to="/" className="flex items-center gap-2">
+            <span className="text-2xl">🌍</span>
+            <span className="hidden font-heading font-bold text-slate-900 sm:inline">TourVision</span>
+          </Link>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate('/nearby')}
+          className="hidden min-w-[280px] flex-shrink-0 items-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-left hover:shadow-sm md:flex"
+        >
+          <span className="flex-1 text-sm text-slate-500">Search destinations...</span>
+          <SearchIcon />
+        </button>
+
+        <div className="flex flex-shrink-0 items-center gap-2 md:gap-4">
+          <button
+            type="button"
+            onClick={() => navigate('/nearby')}
+            className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 md:hidden"
+            aria-label="Search"
+          >
+            <SearchIcon />
+          </button>
+
+          <button type="button" className="hidden h-10 w-10 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 md:flex" aria-label="Notifications">
+            <BellIcon />
+          </button>
+
+          <div className="relative" ref={menuRef}>
             <button
               type="button"
-              onClick={() => setSearchOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--c-border)] bg-white"
-              aria-label="Open search"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="flex h-10 items-center gap-2 rounded-full border border-slate-200 px-3 hover:shadow-sm"
+              aria-label="Menu"
             >
-              <SearchIcon />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button type="button" className="hidden text-sm font-semibold text-[var(--c-text-primary)] md:inline-flex" onClick={onChatOpen}>
-              Become a Host
+              <span className="text-lg">👤</span>
+              <span className="hidden text-sm font-semibold text-slate-900 md:inline">Menu</span>
             </button>
 
-            <button
-              type="button"
-              className="hidden h-10 w-10 items-center justify-center rounded-full hover:bg-[var(--c-surface-inset)] md:inline-flex"
-              aria-label="Language and region"
-            >
-              <GlobeIcon />
-            </button>
-
-            <div className="relative" ref={menuRef}>
-              <button
-                type="button"
-                className="flex items-center gap-3 rounded-full border border-[var(--c-border)] bg-white px-3 py-2 shadow-[var(--shadow-card)]"
-                onClick={() => setMenuOpen((current) => !current)}
-              >
-                <MenuIcon />
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--c-surface-inset)] text-sm font-bold text-[var(--c-text-primary)]">
-                  {user?.name?.[0] || user?.email?.[0] || 'U'}
-                </span>
-              </button>
-
-              {menuOpen ? (
-                <div className="absolute right-0 mt-3 w-60 overflow-hidden rounded-[16px] border border-[var(--c-border)] bg-white shadow-[var(--shadow-modal)]">
-                  {menuItems.map((item, index) => (
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-2 min-w-48 rounded-xl border border-slate-200 bg-white shadow-lg">
+                {isAuthenticated ? (
+                  <>
+                    <div className="border-b border-slate-200 px-4 py-3">
+                      <p className="text-sm font-semibold text-slate-900">{user?.name || user?.email || 'Traveler'}</p>
+                      <p className="text-xs text-slate-500">{user?.email}</p>
+                    </div>
                     <button
-                      key={item.label}
                       type="button"
                       onClick={() => {
+                        navigate('/trip-planner');
                         setMenuOpen(false);
-                        item.action();
                       }}
-                      className={`w-full px-4 py-3 text-left text-sm transition hover:bg-[var(--c-surface-inset)] ${
-                        index === 2 ? 'border-t border-[var(--c-border)]' : ''
-                      }`}
+                      className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
                     >
-                      {item.label}
+                      Trip Planner
                     </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigate('/saved');
+                        setMenuOpen(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      Saved Places
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigate('/trips');
+                        setMenuOpen(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      Trips & Expenses
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigate('/profile');
+                        setMenuOpen(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      Profile
+                    </button>
+                    <button type="button" onClick={onChatOpen} className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">
+                      Help & Support
+                    </button>
+                    <div className="border-t border-slate-200 p-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          logout();
+                          setMenuOpen(false);
+                        }}
+                        className="w-full rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        Sign out
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => { navigate('/login'); setMenuOpen(false); }} className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">
+                      Sign in
+                    </button>
+                    <button type="button" onClick={() => { navigate('/signup'); setMenuOpen(false); }} className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">
+                      Sign up
+                    </button>
+                    <div className="border-t border-slate-200 p-2">
+                      <button type="button" onClick={onChatOpen} className="w-full rounded-lg px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                        Help & Support
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
-      </header>
-
-      {searchOpen ? (
-        <SearchOverlay
-          isMobile={window.innerWidth < 768}
-          onClose={() => setSearchOpen(false)}
-          onSubmit={handleSearchSubmit}
-        />
-      ) : null}
-    </>
+      </div>
+    </header>
   );
 }
 
 Navbar.propTypes = {
-  onChatOpen: PropTypes.func.isRequired,
+  onChatOpen: PropTypes.func,
+  onMenuToggle: PropTypes.func,
   user: PropTypes.shape({
-    email: PropTypes.string,
-    name: PropTypes.string
+    name: PropTypes.string,
+    email: PropTypes.string
   })
-};
-
-Navbar.defaultProps = {
-  user: null
 };
