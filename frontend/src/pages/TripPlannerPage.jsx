@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { planTrip } from '../api/tripApi';
 import { extractData, extractMessage } from '../api/responseUtils';
 import MapView from '../components/map/MapView';
+import CostPrediction from '../components/trip/CostPrediction';
 
 const STEPS = [
   { label: 'Destinations' },
@@ -299,6 +300,15 @@ export default function TripPlannerPage() {
               )}
             </div>
           </div>
+
+          {/* Cost Prediction Preview */}
+          <div className="mt-6">
+            <CostPrediction
+              travelers={totalTravelers}
+              destinations={form.destinations}
+              places={[]}
+            />
+          </div>
         </div>
 
         {tripResult ? (
@@ -342,16 +352,11 @@ export default function TripPlannerPage() {
               </div>
 
               <div className="space-y-6">
-                <div className="card card-bordered p-6">
-                  <h3>Cost breakdown</h3>
-                  <div className="mt-4 space-y-3 text-sm">
-                    <div className="flex justify-between"><span className="text-[var(--c-text-secondary)]">Transport</span><span>₹4,800</span></div>
-                    <div className="flex justify-between"><span className="text-[var(--c-text-secondary)]">Experiences</span><span>₹2,400</span></div>
-                    <div className="flex justify-between"><span className="text-[var(--c-text-secondary)]">Food estimate</span><span>₹1,800</span></div>
-                    <hr className="divider my-3" />
-                    <div className="flex justify-between font-semibold"><span>Total</span><span>₹9,000</span></div>
-                  </div>
-                </div>
+                <CostPrediction
+                  travelers={totalTravelers}
+                  destinations={form.destinations}
+                  places={[]}
+                />
 
                 <div className="card card-bordered p-6">
                   <h3>Plan details</h3>

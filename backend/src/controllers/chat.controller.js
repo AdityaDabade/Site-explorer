@@ -5,7 +5,6 @@ const Place = require("../models/Place");
 const asyncHandler = require("../utils/asyncHandler");
 const { emitGuideNarration } = require("../config/socket");
 const { generateChatReply, syncChatSessionToVectorDb } = require("../services/aiContent.service");
-const { generateSpeech } = require("../services/tts.service");
 const { failure, success } = require("../utils/response");
 
 const sendMessage = asyncHandler(async (req, res) => {
@@ -53,18 +52,6 @@ const sendMessage = asyncHandler(async (req, res) => {
     history: session.messages
   });
 
-  let ttsResult = { audioUrl: '' };
-  if (aiResult.tts_audio_url) {
-    ttsResult.audioUrl = aiResult.tts_audio_url;
-  } else {
-    try {
-      ttsResult = await generateSpeech(aiResult.reply);
-    } catch (ttsError) {
-      console.warn('TTS generation failed, returning chat reply without audio:', ttsError.message);
-      ttsResult = { audioUrl: '' };
-    }
-  }
-
   session.messages.push({
     role: "assistant",
     content: aiResult.reply
@@ -84,17 +71,15 @@ const sendMessage = asyncHandler(async (req, res) => {
     emitGuideNarration(req.user.id, {
       place_id: place ? place.place_id || place.id : null,
       caption: aiResult.caption || aiResult.reply,
-      text: aiResult.reply,
-      audio_url: ttsResult.audioUrl
+      text: aiResult.reply
     });
   }
 
   return success(res, {
     sessionId: session.id,
     reply: aiResult.reply,
+    text: aiResult.text || aiResult.reply,
     caption: aiResult.caption || aiResult.reply,
-    tts_audio_url: ttsResult.audioUrl,
-    tts_audio: ttsResult.audioUrl,
     vector_synced: vectorSync.synced,
     source: aiResult.source
   });

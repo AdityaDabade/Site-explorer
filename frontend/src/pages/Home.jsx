@@ -2,17 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { getPlaces, scanQr } from "../api/placeApi";
-import {
-  extractArray as sharedExtractArray,
-  extractData,
-  extractMessage,
-} from "../api/responseUtils";
+import { getPlaces } from "../api/placeApi";
+import { extractArray as sharedExtractArray } from "../api/responseUtils";
 import QRScanner from "../components/qr/QRScanner";
 import { useLocationContext } from "../context/LocationContext";
+import { parsePlaceIdFromQr } from "../utils/qr";
 
 const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1539635278303-d4002c07eae3?w=1920&auto=format&fit=crop&q=80";
+  "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&q=90&w=3840";
 
 const CATEGORY_PILLS = ["Monuments", "Nature", "Food", "Culture", "Beaches"];
 
@@ -153,6 +150,20 @@ const REVIEW_CARDS = [
 
 const FALLBACK_PLACES = [
   {
+    id: "rajgad",
+    name: "Rajgad Fort",
+    location_name: "Pune, Maharashtra",
+    category: "Historic Fort",
+    distance: 18.5,
+    rating: 4.7,
+    review_count: 3200,
+    price: 0,
+    free_entry: true,
+    has_ar: true,
+    image: "/images/rajgad-fort.jpg",
+    score: 9.2,
+  },
+  {
     id: 1,
     name: "Amber Fort",
     location_name: "Jaipur, India",
@@ -214,6 +225,8 @@ const FALLBACK_PLACES = [
   },
 ];
 
+const RAJGAD_TRENDING_PLACE = FALLBACK_PLACES[0];
+
 const REGION_FILTERS = [
   "All",
   "India",
@@ -246,6 +259,11 @@ function normalizePlace(place, index) {
   };
 }
 
+function ensureRajgadPlace(places) {
+  const hasRajgad = places.some((place) => String(place.id).toLowerCase() === "rajgad");
+  return hasRajgad ? places : [RAJGAD_TRENDING_PLACE, ...places];
+}
+
 // Safe helper — handles every possible API response shape
 function extractArray(response) {
   if (!response) return [];
@@ -262,49 +280,86 @@ function extractArray(response) {
 
 function ListingCard({ onOpen, onToggleSave, place, saved = false }) {
   return (
-    <article className="card-lift cursor-pointer" onClick={() => onOpen(place)}>
-      <div className="relative aspect-[20/19] overflow-hidden rounded-[var(--r-lg)] bg-[var(--c-surface-inset)]">
+    <article
+      className="group cursor-pointer overflow-hidden rounded-2xl bg-white shadow-md shadow-slate-200/70 ring-1 ring-slate-200/70 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-xl hover:shadow-slate-300/50"
+      onClick={() => onOpen(place)}
+    >
+      <div className="relative aspect-[20/19] overflow-hidden bg-[var(--c-surface-inset)]">
         <img
           alt={place.name}
-          className="h-full w-full object-cover transition duration-500 ease-out hover:scale-[1.03]"
+          className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-110"
           src={place.image}
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             onToggleSave(place.id);
           }}
-          className="absolute right-4 top-4 text-2xl text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.35)]"
+          className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-2xl text-white shadow-lg backdrop-blur-md ring-1 ring-white/30 transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/30 active:scale-95"
           aria-label="Save place"
         >
           {saved ? "♥" : "♡"}
         </button>
+        <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
+          <div className="mb-3 flex flex-wrap gap-2">
+            <span className="rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] backdrop-blur-md">
+              {place.category}
+            </span>
+            {place.has_ar && (
+              <span className="rounded-full bg-teal-400/90 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-950">
+                AR
+              </span>
+            )}
+          </div>
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <h3 className="font-heading text-xl font-extrabold leading-tight text-white">
+                {place.name}
+              </h3>
+              <p className="mt-1 text-sm font-medium text-white/80">
+                {place.location_name}
+              </p>
+            </div>
+            <span className="rounded-xl bg-white px-3 py-1.5 font-heading text-sm font-extrabold text-slate-950 shadow-lg">
+              {place.score}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div className="px-1 pb-1 pt-3">
-        <div className="flex items-start justify-between gap-3">
+      <div className="p-5">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <span className="badge badge-neutral">
+            {place.distance ? `${place.distance.toFixed(1)} km` : "Nearby"}
+          </span>
+          <span className="text-xs font-bold uppercase tracking-[0.08em] text-teal-700">
+            {place.free_entry ? "Free entry" : "Premium"}
+          </span>
+        </div>
+        <div className="hidden">
           <h3 className="font-heading text-[1rem] font-semibold leading-6">
             {place.name}
           </h3>
           <span className="score-bubble">{place.score}</span>
         </div>
 
-        <div className="mt-1 flex items-center justify-between gap-3 text-[13px] text-[var(--c-text-secondary)]">
+        <div className="hidden">
           <span>{place.location_name}</span>
           <span className="badge badge-neutral">
             {place.distance ? `${place.distance.toFixed(1)} km` : "Nearby"}
           </span>
         </div>
 
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="hidden">
           <span className="badge badge-neutral">{place.category}</span>
           {place.has_ar && (
             <span className="badge badge-teal">AR Available</span>
           )}
         </div>
 
-        <div className="mt-2 text-[13px] text-[var(--c-text-secondary)]">
+        <div className="mt-0 flex items-center justify-between gap-3 text-[13px] text-[var(--c-text-secondary)]">
           ★ {place.rating.toFixed(1)} ·{" "}
           {Number(place.review_count).toLocaleString()} reviews
         </div>
@@ -349,7 +404,7 @@ export default function Home() {
   const [savedIds, setSavedIds] = useState([]);
   const [search, setSearch] = useState({
     destination: "",
-    date: "Any week",
+    date: "",
     travelers: "Any travelers",
   });
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -369,7 +424,7 @@ export default function Home() {
         const list = sharedExtractArray(response);
         const normalized = list.map(normalizePlace);
         if (isMounted && normalized.length) {
-          setTrendingPlaces(normalized);
+          setTrendingPlaces(ensureRajgadPlace(normalized));
         }
       } catch (error) {
         if (isMounted) {
@@ -399,60 +454,66 @@ export default function Home() {
   const handleSearchSubmit = () => navigate("/nearby");
 
   const handleQrDetected = async (decodedText) => {
-    try {
-      const response = await scanQr({ qr_data: decodedText });
-      const data = extractData(response);
-      const placeId = data?.place_id || data?.placeId;
-      if (!placeId) throw new Error("QR scan did not return a place id.");
-      setScannerOpen(false);
-      toast.success("Opening your landmark experience.");
-      navigate(`/place/${placeId}`);
-    } catch (error) {
-      toast.error(extractMessage(error, "Unable to process this QR code."));
+    const placeId = parsePlaceIdFromQr(decodedText);
+
+    if (!placeId) {
+      toast.error("Invalid QR");
+      return;
     }
+
+    setScannerOpen(false);
+    toast.success("Opening your landmark experience.");
+    navigate(`/place/${placeId}`);
   };
 
   return (
     <>
       {/* ── HERO ── */}
-      <section
-        className="relative flex min-h-[100svh] items-end overflow-hidden"
-        style={{
-          backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.75) 100%), url(${HERO_IMAGE})`,
-          backgroundPosition: "center",
-          backgroundSize: "cover",
-        }}
-      >
-        <div className="container w-full pb-[120px]">
-          <div className="max-w-[640px]">
+      <section className="relative flex min-h-[92svh] items-end overflow-hidden bg-emerald-950">
+        <img
+          alt="Foggy monsoon mountains inspired by Rajgad Fort"
+          className="absolute inset-0 h-full w-full scale-105 object-cover saturate-[1.12] contrast-[1.06] hue-rotate-[12deg] transition-transform duration-700"
+          src={HERO_IMAGE}
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.2)_0%,rgba(0,0,0,0.6)_60%,rgba(0,0,0,0.8)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_28%,rgba(34,197,94,0.28),transparent_28%),radial-gradient(circle_at_72%_12%,rgba(13,148,136,0.18),transparent_26%),linear-gradient(120deg,rgba(6,78,59,0.38),transparent_52%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-emerald-950/80 to-transparent" />
+        <div className="container relative z-10 w-full pb-[96px] pt-24">
+          <div className="max-w-[760px] animate-[fadeUp_0.7s_var(--ease-out)_both]">
+            <div className="mb-5 inline-flex rounded-full border border-white/25 bg-white/20 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-black/20 backdrop-blur-md transition-all duration-300 hover:scale-[1.05] hover:bg-white/25 hover:shadow-xl">
+              Hi Rahul 👋
+            </div>
+            <p className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-emerald-300 drop-shadow">
+              Explore near your location
+            </p>
             {/* Category pills */}
             <div className="filter-chips mb-6">
               {CATEGORY_PILLS.map((pill) => (
                 <span
                   key={pill}
-                  className="rounded-full border border-white/25 bg-white/15 px-4 py-2 text-[13px] font-semibold text-white backdrop-blur-md"
+                  className="rounded-full border border-white/25 bg-white/15 px-4 py-2 text-[13px] font-semibold text-white shadow-black/20 backdrop-blur-md transition-all duration-300 hover:scale-[1.05] hover:border-emerald-200/70 hover:bg-white/25 hover:shadow-xl hover:shadow-emerald-500/20"
                 >
                   {pill}
                 </span>
               ))}
             </div>
 
-            <h1 className="max-w-[640px] text-white">
+            <h1 className="max-w-[780px] animate-[fadeUp_0.8s_var(--ease-out)_0.08s_both] text-6xl font-extrabold leading-tight text-white drop-shadow-[0_10px_34px_rgba(0,0,0,0.65)] sm:text-7xl lg:text-8xl">
               Explore the World&apos;s Most
               <br />
               Incredible Places
             </h1>
-            <p className="mt-4 max-w-[560px] text-lg text-white/85">
+            <p className="mt-5 max-w-[620px] text-lg font-medium text-white/85 drop-shadow md:text-xl">
               AI-powered tours, AR experiences, and smart trip planning
             </p>
 
             {/* Search bar */}
-            <div className="mt-8 overflow-hidden rounded-[var(--r-xl)] bg-white p-2 shadow-[var(--shadow-search)]">
+            <div className="mt-9 overflow-hidden rounded-2xl border border-white/30 bg-white/20 p-2 shadow-xl shadow-black/35 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] hover:border-emerald-200/60 hover:bg-white/25 hover:shadow-2xl hover:shadow-emerald-950/30">
               <div className="grid gap-2 md:grid-cols-[1.2fr_0.8fr_0.8fr_auto]">
-                <label className="input-wrap rounded-[var(--r-lg)] px-4 py-3 hover:bg-[var(--c-surface-inset)]">
-                  <span className="input-label">Destination</span>
+                <label className="input-wrap rounded-2xl border border-white/20 bg-white/85 px-4 py-3 shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-lg focus-within:ring-2 focus-within:ring-emerald-300/80">
+                  <span className="input-label text-emerald-700">Destination</span>
                   <input
-                    className="border-none bg-transparent p-0 text-[15px] shadow-none focus:shadow-none"
+                    className="border-none bg-transparent p-0 text-[15px] text-slate-950 shadow-none outline-none placeholder:text-slate-400 focus:shadow-none"
                     placeholder="Search destinations"
                     value={search.destination}
                     onChange={(e) =>
@@ -461,26 +522,22 @@ export default function Home() {
                   />
                 </label>
 
-                <label className="input-wrap rounded-[var(--r-lg)] px-4 py-3 hover:bg-[var(--c-surface-inset)]">
-                  <span className="input-label">Date</span>
-                  <select
-                    className="border-none bg-transparent p-0 text-[15px] shadow-none focus:shadow-none"
+                <label className="input-wrap rounded-2xl border border-white/20 bg-white/85 px-4 py-3 shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-lg focus-within:ring-2 focus-within:ring-emerald-300/80">
+                  <span className="input-label text-emerald-700">Date</span>
+                  <input
+                    type="date"
+                    className="border-none bg-transparent p-0 text-[15px] text-slate-950 shadow-none outline-none focus:shadow-none"
                     value={search.date}
                     onChange={(e) =>
                       setSearch((s) => ({ ...s, date: e.target.value }))
                     }
-                  >
-                    <option>Any week</option>
-                    <option>This weekend</option>
-                    <option>Next week</option>
-                    <option>Next month</option>
-                  </select>
+                  />
                 </label>
 
-                <label className="input-wrap rounded-[var(--r-lg)] px-4 py-3 hover:bg-[var(--c-surface-inset)]">
-                  <span className="input-label">Travelers</span>
+                <label className="input-wrap rounded-2xl border border-white/20 bg-white/85 px-4 py-3 shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-lg focus-within:ring-2 focus-within:ring-emerald-300/80">
+                  <span className="input-label text-emerald-700">Travelers</span>
                   <select
-                    className="border-none bg-transparent p-0 text-[15px] shadow-none focus:shadow-none"
+                    className="border-none bg-transparent p-0 text-[15px] text-slate-950 shadow-none outline-none focus:shadow-none"
                     value={search.travelers}
                     onChange={(e) =>
                       setSearch((s) => ({ ...s, travelers: e.target.value }))
@@ -496,7 +553,7 @@ export default function Home() {
 
                 <button
                   type="button"
-                  className="btn-primary btn-lg"
+                  className="rounded-2xl bg-gradient-to-r from-teal-600 via-emerald-600 to-indigo-600 px-8 py-4 font-heading text-base font-extrabold text-white shadow-lg shadow-emerald-950/30 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.05] hover:shadow-xl hover:shadow-emerald-500/25 active:scale-95"
                   onClick={handleSearchSubmit}
                 >
                   Search
@@ -507,14 +564,14 @@ export default function Home() {
             <div className="mt-4 flex flex-wrap gap-3">
               <button
                 type="button"
-                className="btn-ghost btn-sm"
+                className="rounded-full border border-white/30 bg-white/15 px-5 py-2.5 text-sm font-bold text-white shadow-lg backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/25 active:scale-95"
                 onClick={() => setScannerOpen(true)}
               >
                 Scan QR Code
               </button>
               <button
                 type="button"
-                className="btn-ghost btn-sm"
+                className="rounded-full border border-white/30 bg-white/15 px-5 py-2.5 text-sm font-bold text-white shadow-lg backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/25 active:scale-95"
                 onClick={() => navigate("/trip-planner")}
               >
                 Start planning
@@ -525,7 +582,7 @@ export default function Home() {
       </section>
 
       {/* ── TRUST BAR ── */}
-      <div className="trust-bar">
+      <div className="trust-bar shadow-sm">
         <div className="trust-item">
           <span className="trust-item-icon">✓</span>Free Cancellation
         </div>
@@ -541,7 +598,7 @@ export default function Home() {
       </div>
 
       {/* ── CATEGORIES ── */}
-      <section className="section">
+      <section className="bg-white py-20">
         <div className="container">
           <div className="section-eyebrow">Things To Do</div>
           <h2 className="section-title">What do you want to explore?</h2>
@@ -549,14 +606,14 @@ export default function Home() {
             {CATEGORIES.map((cat) => (
               <article
                 key={cat.title}
-                className="relative h-40 cursor-pointer overflow-hidden rounded-[var(--r-xl)]"
+                className="group relative h-44 cursor-pointer overflow-hidden rounded-2xl shadow-lg shadow-slate-200/70 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-xl"
               >
                 <img
                   alt={cat.title}
-                  className="h-full w-full object-cover transition duration-300 hover:scale-105"
+                  className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
                   src={cat.image}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-black/10" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
                 <p className="absolute bottom-4 left-4 font-heading text-lg font-bold text-white">
                   {cat.title}
                 </p>
@@ -567,7 +624,7 @@ export default function Home() {
       </section>
 
       {/* ── TRENDING PLACES ── */}
-      <section className="section-sm">
+      <section className="bg-slate-50 py-20">
         <div className="container">
           <div className="flex items-end justify-between gap-4">
             <div>
@@ -576,7 +633,7 @@ export default function Home() {
             </div>
             <button
               type="button"
-              className="text-sm font-semibold text-[var(--c-primary)]"
+              className="rounded-full px-4 py-2 text-sm font-bold text-teal-700 transition-all duration-300 hover:bg-teal-50 hover:text-indigo-700 active:scale-95"
               onClick={() => navigate("/nearby")}
             >
               Show all →
@@ -629,7 +686,7 @@ export default function Home() {
       </section>
 
       {/* ── COLLECTIONS ── */}
-      <section className="section-sm">
+      <section className="bg-white py-20">
         <div className="container">
           <div className="section-eyebrow">Collections</div>
           <h2 className="section-title">Curated Experiences</h2>
@@ -637,12 +694,12 @@ export default function Home() {
             {COLLECTIONS.map((col) => (
               <article
                 key={col.title}
-                className="card card-bordered min-w-[240px] max-w-[240px] cursor-pointer p-4 hover:shadow-[var(--shadow-hover)]"
+                className="card card-bordered min-w-[260px] max-w-[260px] cursor-pointer p-4 shadow-md shadow-slate-200/60 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-xl"
               >
                 <div className="flex gap-4">
                   <img
                     alt={col.title}
-                    className="h-[120px] w-[120px] rounded-[var(--r-lg)] object-cover"
+                    className="h-[120px] w-[120px] rounded-2xl object-cover"
                     src={col.image}
                   />
                   <div className="flex flex-1 flex-col justify-between">
@@ -664,7 +721,7 @@ export default function Home() {
       </section>
 
       {/* ── FEATURE ROWS ── */}
-      <section className="section">
+      <section className="bg-slate-50 py-20">
         <div className="container space-y-12">
           {FEATURE_ROWS.map((feature, index) => (
             <div
@@ -673,10 +730,10 @@ export default function Home() {
                 index % 2 === 1 ? "lg:[&>div:first-child]:order-2" : ""
               }`}
             >
-              <div className="overflow-hidden rounded-[var(--r-2xl)]">
+              <div className="overflow-hidden rounded-3xl shadow-xl shadow-slate-300/50">
                 <img
                   alt={feature.title}
-                  className="h-[420px] w-full object-cover"
+                  className="h-[420px] w-full object-cover transition-all duration-500 hover:scale-[1.03]"
                   src={feature.image}
                 />
               </div>
@@ -704,10 +761,10 @@ export default function Home() {
       </section>
 
       {/* ── REVIEWS ── */}
-      <section className="section-sm">
+      <section className="bg-white py-20">
         <div className="container">
           <div className="text-center">
-            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-[24px] bg-[var(--c-teal)] font-heading text-4xl font-extrabold text-white">
+            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-teal-500 to-indigo-600 font-heading text-4xl font-extrabold text-white shadow-xl shadow-teal-500/25">
               9.2
             </div>
             <p className="mt-5 text-2xl font-bold">Exceptional</p>
@@ -718,7 +775,10 @@ export default function Home() {
 
           <div className="mt-10 grid gap-5 lg:grid-cols-3">
             {REVIEW_CARDS.map((review) => (
-              <article key={review.name} className="card card-bordered p-6">
+              <article
+                key={review.name}
+                className="card card-bordered p-6 shadow-md shadow-slate-200/60 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-xl"
+              >
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="font-semibold">
@@ -744,9 +804,9 @@ export default function Home() {
       </section>
 
       {/* ── APP DOWNLOAD CTA ── */}
-      <section className="section">
+      <section className="bg-slate-50 py-20">
         <div className="container">
-          <div className="overflow-hidden rounded-[32px] bg-[var(--c-text-primary)] px-6 py-10 text-white md:px-10">
+          <div className="overflow-hidden rounded-[32px] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-6 py-10 text-white shadow-2xl shadow-slate-300/60 md:px-10">
             <div className="grid items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
               <div>
                 <span className="badge badge-amber">App Download</span>

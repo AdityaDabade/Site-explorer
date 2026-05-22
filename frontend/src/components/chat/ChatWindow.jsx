@@ -102,11 +102,11 @@ export default function ChatWindow({ contextPlaceId, isOpen, onClose }) {
       });
       const data = extractData(response);
 
-      const replyText =
-        data?.reply ||
-        data?.message ||
-        data?.text ||
-        'I received your message, but the guide did not return any text.';
+      const replyText = data?.reply || data?.message || data?.text;
+
+      if (!replyText) {
+        throw new Error('Empty AI response');
+      }
 
       streamReply(replyText);
     } catch (error) {
@@ -115,7 +115,7 @@ export default function ChatWindow({ contextPlaceId, isOpen, onClose }) {
         {
           id: `assistant-error-${Date.now()}`,
           role: 'assistant',
-          content: extractMessage(error, 'The chat service is unavailable right now.')
+          content: extractMessage(error, 'Something went wrong')
         }
       ]);
     } finally {

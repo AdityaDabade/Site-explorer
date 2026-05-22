@@ -7,6 +7,8 @@ export const getPlaceById = (id) => axiosInstance.get(`/places/${id}`);
 
 export const getAiContent = (id) => axiosInstance.get(`/places/${id}/ai-content`);
 
+export const generateAiGuide = (payload) => axiosInstance.post('/ai-guide', payload);
+
 export const getNearbyPlaces = (params) => axiosInstance.get('/places/nearby', { params });
 
 export const scanQr = (payload) => axiosInstance.post('/qr/scan', payload);

@@ -6,6 +6,30 @@ import PropTypes from 'prop-types';
  * Mobile: Horizontal scroll with dots
  */
 export default function PlaceGallery({ gallery, placeName, mobileGallery }) {
+  const hasSingleImage = gallery.length <= 1;
+  const primaryImage =
+    gallery[0] ||
+    mobileGallery[0] ||
+    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&auto=format&fit=crop&q=80';
+
+  if (hasSingleImage) {
+    return (
+      <section className="mb-6">
+        <div className="relative overflow-hidden rounded-2xl shadow-lg">
+          <img
+            src={primaryImage}
+            alt={placeName}
+            className="h-[300px] w-full rounded-2xl object-cover sm:h-[380px] lg:h-[450px]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+          <div className="absolute bottom-4 left-4 text-white">
+            <h1 className="text-2xl font-bold">{placeName}</h1>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="overflow-hidden rounded-[var(--r-xl)]">
       {/* Desktop Gallery */}
@@ -14,22 +38,19 @@ export default function PlaceGallery({ gallery, placeName, mobileGallery }) {
           <img
             alt={placeName}
             className="h-full min-h-[420px] w-full object-cover"
-            src={
-              gallery[0] ||
-              'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&auto=format&fit=crop&q=80'
-            }
+            src={primaryImage}
           />
         </div>
         <div className="grid grid-cols-2 gap-2">
-          {(gallery.slice(1, 5).length
-            ? gallery.slice(1, 5)
-            : [placeName, placeName, placeName, placeName]
-          ).map((image, index) => (
+          {gallery.slice(1, 5).map((image, index) => (
             <div key={`gallery-${index}`} className="relative overflow-hidden rounded-[var(--r-lg)]">
               <img
                 alt={`${placeName} ${index + 2}`}
                 className="h-full min-h-[204px] w-full object-cover"
-                src={image || 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80'}
+                src={
+                  image ||
+                  'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80'
+                }
               />
               {index === 3 ? (
                 <button type="button" className="btn-ghost btn-sm absolute bottom-4 right-4">
@@ -44,8 +65,15 @@ export default function PlaceGallery({ gallery, placeName, mobileGallery }) {
       {/* Mobile Gallery */}
       <div className="scroll-row pb-3 lg:hidden">
         {mobileGallery.map((image, index) => (
-          <div key={`mobile-gallery-${index}`} className="min-w-full overflow-hidden rounded-[var(--r-xl)]">
-            <img alt={`${placeName} ${index + 1}`} className="h-[320px] w-full object-cover" src={image} />
+          <div
+            key={`mobile-gallery-${index}`}
+            className="min-w-full overflow-hidden rounded-[var(--r-xl)]"
+          >
+            <img
+              alt={`${placeName} ${index + 1}`}
+              className="h-[320px] w-full object-cover"
+              src={image}
+            />
           </div>
         ))}
       </div>

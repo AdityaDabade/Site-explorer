@@ -8,16 +8,16 @@
   --font-heading: 'Plus Jakarta Sans', sans-serif;
   --font-body: 'DM Sans', sans-serif;
 
-  --c-primary:       #e8470a;
-  --c-primary-hover: #c73d08;
-  --c-primary-light: #fef0eb;
-  --c-primary-mid:   #f97040;
+  --c-primary:       #0f766e;
+  --c-primary-hover: #115e59;
+  --c-primary-light: #ccfbf1;
+  --c-primary-mid:   #4f46e5;
 
-  --c-teal:       #0a7b83;
-  --c-teal-light: #e0f4f5;
+  --c-teal:       #0f766e;
+  --c-teal-light: #ccfbf1;
 
-  --c-amber:      #ffc500;
-  --c-amber-dark: #e6b000;
+  --c-amber:      #f97316;
+  --c-amber-dark: #ea580c;
 
   --c-bg:             #f7f7f7;
   --c-surface:        #ffffff;
@@ -40,7 +40,7 @@
   --shadow-hover:  0 6px 16px rgba(0,0,0,0.12), 0 3px 8px rgba(0,0,0,0.08);
   --shadow-modal:  0 8px 28px rgba(0,0,0,0.28);
   --shadow-search: 0 6px 20px rgba(0,0,0,0.20);
-  --shadow-fab:    0 4px 12px rgba(232,71,10,0.40);
+  --shadow-fab:    0 4px 16px rgba(15,118,110,0.35);
 
   --r-xs:  6px;
   --r-sm:  8px;

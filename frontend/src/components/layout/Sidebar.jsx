@@ -144,8 +144,7 @@ export default function Sidebar({
       <div
         aria-hidden={!isMobileOpen}
         className={[
-          'fixed inset-0 z-40 bg-slate-950/35 backdrop-blur-[2px] transition-all duration-300 lg:hidden',
-          isMobileOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+          'hidden'
         ].join(' ')}
         onClick={onCloseMobile}
       />
@@ -153,10 +152,9 @@ export default function Sidebar({
       <aside
         aria-label="Primary navigation"
         className={[
-          'fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-slate-200/80 bg-white/95 px-4 py-5 shadow-xl shadow-slate-200/70 backdrop-blur transition-all duration-300',
-          'w-[17.5rem] lg:z-30',
-          isCollapsed ? 'lg:w-24' : 'lg:w-72',
-          isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          'fixed left-0 top-0 z-50 hidden h-screen flex-col border-r border-slate-200/60 bg-white/70 px-3 py-5 shadow-lg shadow-slate-200/50 backdrop-blur-md transition-all duration-300 lg:flex',
+          'w-[17.5rem] lg:z-30 lg:w-16 lg:px-2',
+          'lg:translate-x-0'
         ].join(' ')}
       >
         <div className="flex items-center justify-between gap-3">
@@ -164,16 +162,16 @@ export default function Sidebar({
             to="/"
             className={[
               'flex min-w-0 items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/60 focus-visible:ring-offset-2',
-              isCollapsed ? 'lg:justify-center' : ''
+              'lg:justify-center'
             ].join(' ')}
           >
-            <div className={isCollapsed ? 'lg:hidden' : ''}>
+            <div className="shrink-0">
               <LogoMark />
             </div>
             <div
               className={[
                 'min-w-0 transition-all duration-300',
-                isCollapsed ? 'lg:w-0 lg:opacity-0' : 'w-auto opacity-100'
+                'lg:hidden'
               ].join(' ')}
             >
               <p className="truncate font-heading text-lg font-bold text-slate-900">TourVision</p>
@@ -186,7 +184,7 @@ export default function Sidebar({
               type="button"
               onClick={onToggleCollapse}
               aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className="hidden h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-all duration-300 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/60 focus-visible:ring-offset-2 lg:flex"
+              className="hidden"
             >
               <CollapseIcon collapsed={isCollapsed} />
             </button>
@@ -201,13 +199,13 @@ export default function Sidebar({
           </div>
         </div>
 
-        <nav className="mt-8 flex-1 space-y-2 overflow-y-auto" role="navigation">
+        <nav className="mt-10 flex flex-1 flex-col items-center gap-4 overflow-y-auto" role="navigation">
           {navItems.map((item) => (
             <SidebarItem
               key={item.label}
               icon={item.icon}
               isActive={item.isActive}
-              isCollapsed={isCollapsed}
+              isCollapsed
               label={item.label}
               onClick={onCloseMobile}
               to={item.to}
@@ -215,15 +213,15 @@ export default function Sidebar({
           ))}
         </nav>
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/90 p-3 shadow-sm transition-all duration-300">
-          <div className={['flex items-center gap-3', isCollapsed ? 'lg:justify-center' : ''].join(' ')}>
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-900 to-slate-700 text-sm font-bold text-white">
+        <div className="mt-6 rounded-2xl border border-slate-200/70 bg-white/60 p-2 shadow-sm transition-all duration-300 lg:flex lg:justify-center">
+          <div className="flex items-center gap-3 lg:justify-center">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-600 to-indigo-600 text-sm font-bold text-white shadow-lg shadow-teal-500/20 transition-all duration-300 hover:scale-[1.05]">
               {getInitials(user)}
             </div>
             <div
               className={[
                 'min-w-0 flex-1 transition-all duration-300',
-                isCollapsed ? 'lg:w-0 lg:opacity-0' : 'w-auto opacity-100'
+                'lg:hidden'
               ].join(' ')}
             >
               <p className="truncate text-sm font-semibold text-slate-900">{user?.name || user?.email || 'Guest traveler'}</p>
@@ -233,7 +231,7 @@ export default function Sidebar({
             </div>
           </div>
 
-          <div className={['mt-3', isCollapsed ? 'lg:hidden' : ''].join(' ')}>
+          <div className="mt-3 lg:hidden">
             {isAuthenticated ? (
               <button
                 type="button"

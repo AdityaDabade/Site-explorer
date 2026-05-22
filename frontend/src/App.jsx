@@ -167,7 +167,7 @@ function AppFrame() {
       <div
         className={[
           'relative transition-all duration-300',
-          isAdminRoute ? '' : isCollapsed ? 'lg:pl-24' : 'lg:pl-72'
+          isAdminRoute ? '' : 'lg:pl-16'
         ].join(' ')}
       >
         <Navbar onChatOpen={() => setChatOpen(true)} onMenuToggle={openMobileSidebar} user={user} />
@@ -186,8 +186,19 @@ function AppFrame() {
       {!isAdminRoute ? (
         <button
           type="button"
-          onClick={() => setChatOpen((open) => !open)}
-          className="fixed bottom-24 right-4 z-40 flex items-center gap-2 rounded-full bg-[var(--c-text-primary)] px-5 py-3 text-sm font-bold text-white shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-hover)] lg:bottom-8"
+          onClick={() => {
+            if (contextPlaceId) {
+              window.dispatchEvent(
+                new CustomEvent('tourvision:start-ai-guide', {
+                  detail: { placeId: contextPlaceId }
+                })
+              );
+              return;
+            }
+
+            setChatOpen((open) => !open);
+          }}
+          className="fixed bottom-24 right-4 z-40 flex animate-pulse items-center gap-2 rounded-full bg-gradient-to-r from-teal-500 to-purple-600 px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-teal-500/30 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.05] hover:shadow-xl hover:shadow-purple-500/30 active:scale-95 lg:bottom-8"
         >
           <span className="text-base">💬</span>
           AI Guide

@@ -1,0 +1,1 @@
+import{h as t}from"./index-BEbkrDG-.js";const a=e=>t.get("/places",{params:e}),o=e=>t.get(`/places/${e}`),n=e=>t.get(`/places/${e}/ai-content`),g=(e,c)=>t.post(`/places/${e}/geofence`,c);export{o as a,n as b,g as c,a as g};

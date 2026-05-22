@@ -14,7 +14,7 @@ export default function SidebarItem({
   to
 }) {
   return (
-    <div className="group relative">
+    <div className="group relative flex justify-center">
       <Link
         to={to}
         onClick={onClick}
@@ -22,27 +22,20 @@ export default function SidebarItem({
         aria-label={isCollapsed ? label : undefined}
         title={isCollapsed ? label : undefined}
         className={[
-          'relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-3 text-sm font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/60 focus-visible:ring-offset-2',
+          'relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl text-sm font-semibold transition-all duration-300 hover:scale-[1.08] hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/60 focus-visible:ring-offset-2',
           isCollapsed ? 'justify-center' : 'justify-start',
           isActive
-            ? 'bg-teal-50 text-teal-700 shadow-sm'
-            : 'text-slate-600 hover:bg-gray-100 hover:text-slate-900'
+            ? 'bg-gradient-to-br from-teal-500 to-purple-600 text-white shadow-lg shadow-teal-500/25'
+            : 'bg-white/55 text-slate-600 hover:bg-white hover:text-teal-700'
         ].join(' ')}
       >
-        <span
-          aria-hidden="true"
-          className={[
-            'absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-teal-500 transition-opacity duration-300',
-            isActive ? 'opacity-100' : 'opacity-0'
-          ].join(' ')}
-        />
-        <span className="relative z-10 flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 text-slate-700 shadow-sm ring-1 ring-slate-200/80">
+        <span className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all duration-300">
           {icon}
         </span>
         <span
           className={[
             'relative z-10 whitespace-nowrap transition-all duration-300',
-            isCollapsed ? 'w-0 translate-x-2 opacity-0' : 'w-auto translate-x-0 opacity-100'
+            isCollapsed ? 'hidden' : 'w-auto translate-x-0 opacity-100'
           ].join(' ')}
         >
           {label}
@@ -52,7 +45,7 @@ export default function SidebarItem({
       {showTooltip && isCollapsed ? (
         <span
           role="tooltip"
-          className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 rounded-lg bg-slate-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-all duration-300 group-hover:opacity-100 group-focus-within:opacity-100"
+          className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white opacity-0 shadow-xl transition-all duration-300 group-hover:translate-x-1 group-hover:opacity-100 group-focus-within:translate-x-1 group-focus-within:opacity-100"
         >
           {label}
         </span>

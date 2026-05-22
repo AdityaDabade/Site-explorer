@@ -53,14 +53,14 @@ export default function NavbarModern({ onChatOpen, user }) {
 
   if (isAdminRoute) {
     return (
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-14 items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 font-heading text-lg font-bold text-slate-900">
+      <header className="sticky top-0 z-40 border-b border-[var(--c-border)] bg-white transition-all duration-300">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link to="/" className="flex items-center gap-2 font-heading text-lg font-bold text-[var(--c-text-primary)]">
             <span>🌍</span>
             <span className="hidden sm:inline">TourVision Admin</span>
           </Link>
           <div className="flex items-center gap-3">
-            <button type="button" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={onChatOpen}>
+            <button type="button" className="rounded-[var(--r-md)] border border-[var(--c-border)] px-3 py-2 text-sm font-semibold text-[var(--c-text-primary)] transition-colors hover:bg-[var(--c-surface-inset)]" onClick={onChatOpen}>
               Help
             </button>
           </div>
@@ -70,38 +70,46 @@ export default function NavbarModern({ onChatOpen, user }) {
   }
 
   return (
-    <header className={`sticky top-0 z-40 border-b border-slate-200 bg-white transition-shadow duration-300 ${isScrolled ? 'shadow-sm' : ''}`}>
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-14 items-center justify-between gap-3 md:h-16">
+    <header
+      className={`sticky top-0 z-40 border-b border-[var(--c-border)] bg-gradient-to-r from-white to-[var(--c-surface)] transition-all duration-300 ${
+        isScrolled ? 'shadow-sm' : ''
+      }`}
+    >
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 md:h-16">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 flex-shrink-0">
+        <Link to="/" className="flex flex-shrink-0 items-center gap-2">
           <span className="text-2xl">🌍</span>
-          <span className="hidden font-heading font-bold text-slate-900 sm:inline">TourVision</span>
+          <span className="hidden font-heading font-bold text-[var(--c-text-primary)] sm:inline">TourVision</span>
         </Link>
 
         {/* Search bar - hidden on mobile */}
         <button
           type="button"
           onClick={() => navigate('/nearby')}
-          className="hidden min-w-[280px] items-center rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-left hover:shadow-sm md:flex flex-shrink-0"
+          className="hidden flex-shrink-0 min-w-[280px] items-center rounded-full border border-[var(--c-border)] bg-[var(--c-surface-inset)] px-4 py-2 text-left transition-all hover:shadow-sm hover:border-[var(--c-border-focus)] md:flex"
         >
-          <span className="flex-1 text-sm text-slate-500">Search destinations...</span>
+          <span className="flex-1 text-sm text-[var(--c-text-secondary)]">Search destinations...</span>
           <SearchIcon />
         </button>
 
         {/* Right section */}
-        <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
+        <div className="flex flex-shrink-0 items-center gap-2 md:gap-4">
           {/* Mobile search button */}
           <button
             type="button"
             onClick={() => navigate('/nearby')}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 md:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-[var(--c-text-secondary)] transition-colors hover:bg-[var(--c-surface-inset)] md:hidden"
             aria-label="Search"
           >
             <SearchIcon />
           </button>
 
           {/* Notifications */}
-          <button type="button" className="hidden h-10 w-10 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 md:flex" aria-label="Notifications">
+          <button
+            type="button"
+            className="hidden h-10 w-10 items-center justify-center rounded-full text-[var(--c-text-secondary)] transition-colors hover:bg-[var(--c-surface-inset)] md:flex"
+            aria-label="Notifications"
+          >
             <BellIcon />
           </button>
 
@@ -110,20 +118,20 @@ export default function NavbarModern({ onChatOpen, user }) {
             <button
               type="button"
               onClick={() => setMenuOpen(!menuOpen)}
-              className="flex h-10 items-center gap-2 rounded-full border border-slate-200 px-3 hover:shadow-sm"
+              className="flex h-10 items-center gap-2 rounded-full border border-[var(--c-border)] px-3 transition-all hover:shadow-sm hover:border-[var(--c-border-focus)]"
               aria-label="Menu"
             >
               <span className="text-lg">👤</span>
-              <span className="hidden text-sm font-semibold text-slate-900 md:inline">Menu</span>
+              <span className="hidden text-sm font-semibold text-[var(--c-text-primary)] md:inline">Menu</span>
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 top-full mt-2 min-w-48 rounded-xl border border-slate-200 bg-white shadow-lg">
+              <div className="absolute right-0 top-full mt-2 min-w-48 rounded-[var(--r-lg)] border border-[var(--c-border)] bg-white shadow-lg">
                 {isAuthenticated ? (
                   <>
-                    <div className="border-b border-slate-200 px-4 py-3">
-                      <p className="text-sm font-semibold text-slate-900">{user?.name || user?.email || 'Traveler'}</p>
-                      <p className="text-xs text-slate-500">{user?.email}</p>
+                    <div className="border-b border-[var(--c-border)] px-4 py-3">
+                      <p className="text-sm font-semibold text-[var(--c-text-primary)]">{user?.name || user?.email || 'Traveler'}</p>
+                      <p className="text-xs text-[var(--c-text-secondary)]">{user?.email}</p>
                     </div>
                     <button
                       type="button"
@@ -131,7 +139,7 @@ export default function NavbarModern({ onChatOpen, user }) {
                         navigate('/trip-planner');
                         setMenuOpen(false);
                       }}
-                      className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                      className="w-full px-4 py-2 text-left text-sm text-[var(--c-text-secondary)] transition-colors hover:bg-[var(--c-surface-inset)] hover:text-[var(--c-text-primary)]"
                     >
                       My Trips
                     </button>
@@ -141,21 +149,25 @@ export default function NavbarModern({ onChatOpen, user }) {
                         navigate('/expenses');
                         setMenuOpen(false);
                       }}
-                      className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                      className="w-full px-4 py-2 text-left text-sm text-[var(--c-text-secondary)] transition-colors hover:bg-[var(--c-surface-inset)] hover:text-[var(--c-text-primary)]"
                     >
                       Wishlist
                     </button>
-                    <button type="button" onClick={onChatOpen} className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">
+                    <button
+                      type="button"
+                      onClick={onChatOpen}
+                      className="w-full px-4 py-2 text-left text-sm text-[var(--c-text-secondary)] transition-colors hover:bg-[var(--c-surface-inset)] hover:text-[var(--c-text-primary)]"
+                    >
                       Help & Support
                     </button>
-                    <div className="border-t border-slate-200 p-2">
+                    <div className="border-t border-[var(--c-border)] p-2">
                       <button
                         type="button"
                         onClick={() => {
                           logout();
                           setMenuOpen(false);
                         }}
-                        className="w-full rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                        className="w-full rounded-[var(--r-md)] px-4 py-2 text-sm font-semibold text-[var(--c-text-secondary)] transition-colors hover:bg-[var(--c-surface-inset)] hover:text-[var(--c-text-primary)]"
                       >
                         Sign out
                       </button>
@@ -163,14 +175,28 @@ export default function NavbarModern({ onChatOpen, user }) {
                   </>
                 ) : (
                   <>
-                    <button type="button" onClick={() => { navigate('/login'); setMenuOpen(false); }} className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigate('/login');
+                        setMenuOpen(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-[var(--c-text-secondary)] transition-colors hover:bg-[var(--c-surface-inset)] hover:text-[var(--c-text-primary)]"
+                    >
                       Sign in
                     </button>
-                    <button type="button" onClick={() => { navigate('/signup'); setMenuOpen(false); }} className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigate('/signup');
+                        setMenuOpen(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-[var(--c-text-secondary)] transition-colors hover:bg-[var(--c-surface-inset)] hover:text-[var(--c-text-primary)]"
+                    >
                       Sign up
                     </button>
-                    <div className="border-t border-slate-200 p-2">
-                      <button type="button" onClick={onChatOpen} className="w-full rounded-lg px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                    <div className="border-t border-[var(--c-border)] p-2">
+                      <button type="button" onClick={onChatOpen} className="w-full rounded-[var(--r-md)] px-4 py-2 text-sm text-[var(--c-text-secondary)] transition-colors hover:bg-[var(--c-surface-inset)] hover:text-[var(--c-text-primary)]">
                         Help & Support
                       </button>
                     </div>

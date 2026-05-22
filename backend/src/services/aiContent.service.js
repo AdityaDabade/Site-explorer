@@ -1,4 +1,7 @@
 const axios = require("axios");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+const MODEL_NAME = "models/gemini-flash-latest";
 
 function getMlClient() {
   return axios.create({
@@ -17,65 +20,47 @@ async function postToMl(path, payload) {
 }
 
 async function generateChatReply({ place, placeId, zone, message, history = [] }) {
-  if (process.env.ML_SERVICE_URL) {
-    try {
-      const response = await postToMl("/chat", {
-        message,
-        place_id: placeId || place?.place_id || null,
-        context: {
-          zone,
-          history,
-          place
-        }
-      });
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!apiKey || apiKey === "your_api_key_here") {
+    throw new Error("Gemini API key is not configured.");
+  }
 
-      return {
-        caption: response?.caption || response?.reply || response?.message || "",
-        reply: response?.reply || response?.message || response?.caption || "",
-        tts_audio_url: response?.tts_audio_url || "",
-        source: "ml-service"
-      };
-    } catch (error) {
-      console.warn("ML service chat call failed, using local fallback:", error.message);
+  const placeName = place?.name || placeId || "the current place";
+  console.log("PLACE:", placeName);
+  console.log("MESSAGE:", message);
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: MODEL_NAME
+  });
+  console.log("Using model:", MODEL_NAME);
+  const prompt = `
+You are a travel guide.
+
+Place: ${placeName}
+User: ${message}
+ 
+Give short helpful answer.
+`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const replyText = result.response.text().trim();
+
+    if (!replyText) {
+      throw new Error("Gemini did not return a response.");
     }
+
+    return {
+      reply: replyText,
+      caption: replyText,
+      text: replyText,
+      source: "gemini"
+    };
+  } catch (err) {
+    console.error("FULL ERROR:", err);
+    throw err;
   }
-
-  const placeName = place?.name || "this destination";
-  const placeSummary =
-    place?.ai_content?.summary ||
-    place?.description ||
-    "It is a popular stop with cultural and visual highlights.";
-
-  const normalizedMessage = message.trim().toLowerCase();
-  const isGreeting = /^(hi|hello|hey|hii|hiya|good morning|good afternoon|good evening)[!']*$/i.test(message);
-  const isRouteQuestion = /route|walk|walking|path|way|direction|how do I get|where to go/.test(normalizedMessage);
-  const isHistoryQuestion = /history|story|culture|heritage|background|tell me about/.test(normalizedMessage);
-
-  let replyText;
-  if (isGreeting) {
-    replyText = `Hello! ${placeName} is a popular stop with cultural and visual highlights. You're currently in the ${zone || "general"} zone. Ask me for nearby tips, routes, or stories and I’ll help you find the best viewpoint, walking route, or local landmark.`;
-  } else if (isRouteQuestion) {
-    replyText = `For ${placeName}, the easiest route from your current position is to head toward the nearest signature viewpoint first, then follow the pedestrian path past the cultural square and finish at the historic market. I can give you the exact walking route if you want.`;
-  } else if (isHistoryQuestion) {
-    replyText = `This place has a rich story: ${placeSummary} I can share the key historical highlights and why the viewpoint is important to local culture.`;
-  } else {
-    const conversationHint =
-      history.length > 1
-        ? "I also remember the recent context from this conversation."
-        : "I can keep helping with nearby tips, routes, and stories.";
-
-    replyText = `Here is your TourVision guide for ${placeName}: ${placeSummary} You are currently in the ${zone || "general"} zone. ${conversationHint} In response to "${message}", I suggest focusing on the signature viewpoint, the local history, and the best walking route from your current position.`;
-  }
-
-  if (!process.env.ML_SERVICE_URL) {
-    console.warn("ML_SERVICE_URL is not configured, using local chat fallback.");
-  }
-
-  return {
-    reply: replyText,
-    caption: `Exploring ${placeName}: ${placeSummary}`,
-    source: "local-fallback"
-  };
 }
 
 async function generatePlaceContent(place) {
@@ -90,23 +75,46 @@ async function generatePlaceContent(place) {
         source: "ml-service"
       };
     } catch (error) {
-      console.warn("ML service place generation failed, using local fallback:", error.message);
+      console.warn("ML service place generation failed, using Gemini:", error.message);
     }
   }
 
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (!apiKey || apiKey === "your_api_key_here") {
+    throw new Error("Gemini API key is not configured.");
+  }
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: MODEL_NAME
+  });
+  console.log("Using model:", MODEL_NAME);
+  const prompt = `You are a smart travel guide.
+
+Create concise travel content for this place.
+Place name: ${place.name}
+City or location: ${place.city || place.location_name || ""}
+Existing description: ${place.description || ""}
+
+Return only JSON with this shape:
+{
+  "description": "short engaging description",
+  "summary": "one short guide summary",
+  "facts": ["fact one", "fact two", "fact three"]
+}`;
+
+  const result = await model.generateContent(prompt);
+  const rawText = result.response.text().trim();
+  const jsonText = rawText.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
+  const generated = JSON.parse(jsonText);
+
   return {
-    description:
-      place.description ||
-      `${place.name} is a high-interest tourist site in ${place.city || place.location_name || "the region"}.`,
-    summary: `TourVision summary for ${place.name}: arrive with enough time for a walking circuit, photo stops, and the main cultural landmarks.`,
-    facts: [
-      `${place.name} is ideal for guided storytelling and immersive exploration.`,
-      `Peak visitor interest is usually around sunrise and sunset.`,
-      `Nearby points can be explored as a connected micro-itinerary.`
-    ],
+    description: generated.description || "",
+    summary: generated.summary || "",
+    facts: Array.isArray(generated.facts) ? generated.facts : [],
     images: place.images || [],
     ar_model_url: place.ar_model_url || "",
-    source: "local-fallback"
+    source: "gemini"
   };
 }
 

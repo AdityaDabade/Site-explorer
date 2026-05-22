@@ -17,6 +17,7 @@ const chatRoutes = require("./src/routes/chat.routes");
 const tripRoutes = require("./src/routes/trip.routes");
 const adminRoutes = require("./src/routes/admin.routes");
 const feedbackRoutes = require("./src/routes/feedback.routes");
+const aiGuideRoutes = require("./src/routes/aiGuide.routes");
 
 const app = express();
 const server = http.createServer(app);
@@ -51,6 +52,7 @@ app.use(
   "/uploads",
   express.static(path.join(__dirname, process.env.UPLOAD_DIR || "src/uploads"))
 );
+app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/health", (req, res) => {
   res.status(200).json({
@@ -68,6 +70,7 @@ app.use("/api/trips", tripRoutes);
 app.use("/api/trip", tripRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/feedback", feedbackRoutes);
+app.use("/api", aiGuideRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

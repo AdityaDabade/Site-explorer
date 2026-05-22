@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { getPlaces, scanQr } from "../api/placeApi";
-import { extractArray as sharedExtractArray, extractData, extractMessage } from "../api/responseUtils";
+import { getPlaces } from "../api/placeApi";
+import { extractArray as sharedExtractArray } from "../api/responseUtils";
 import QRScanner from "../components/qr/QRScanner";
 import { useLocationContext } from "../context/LocationContext";
 import { useAuth } from "../context/AuthContext";
+import { parsePlaceIdFromQr } from "../utils/qr";
 
 const CATEGORIES = [
   { icon: "🏛", label: "Monuments", color: "bg-amber-50 text-amber-600" },
@@ -246,17 +247,16 @@ export default function HomeModern() {
   };
 
   const handleQrDetected = async (decodedText) => {
-    try {
-      const response = await scanQr({ qr_data: decodedText });
-      const data = extractData(response);
-      const placeId = data?.place_id || data?.placeId;
-      if (!placeId) throw new Error("QR scan did not return a place id.");
-      setScannerOpen(false);
-      toast.success("Opening your landmark experience.");
-      navigate(`/place/${placeId}`);
-    } catch (error) {
-      toast.error(extractMessage(error, "Unable to process this QR code."));
+    const placeId = parsePlaceIdFromQr(decodedText);
+
+    if (!placeId) {
+      toast.error("Invalid QR");
+      return;
     }
+
+    setScannerOpen(false);
+    toast.success("Opening your landmark experience.");
+    navigate(`/place/${placeId}`);
   };
 
   const greeting = user?.name ? `Hi, ${user.name}` : "Welcome to TourVision";
@@ -264,7 +264,7 @@ export default function HomeModern() {
 
   return (
     <>
-      {scannerOpen && <QRScanner onDetected={handleQrDetected} onClose={() => setScannerOpen(false)} />}
+      {scannerOpen && <QRScanner isOpen={scannerOpen} onDetected={handleQrDetected} onClose={() => setScannerOpen(false)} />}
 
       {/* ── GREETING SECTION ── */}
       <section className="border-b border-slate-200 bg-gradient-to-br from-slate-50 to-white px-4 py-8 sm:px-6 lg:px-8">
