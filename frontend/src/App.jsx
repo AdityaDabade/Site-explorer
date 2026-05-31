@@ -18,7 +18,6 @@ const Signup = lazy(() => import('./pages/Signup'));
 const PlacePage = lazy(() => import('./pages/PlacePage'));
 const NearbyPage = lazy(() => import('./pages/NearbyPage'));
 const TripPlannerPage = lazy(() => import('./pages/TripPlannerPage'));
-const ExpenseTrackerPage = lazy(() => import('./pages/ExpenseTracker'));
 const TripsPage = lazy(() => import('./pages/TripsPage'));
 const TripDetailsPage = lazy(() => import('./pages/TripDetailsPage'));
 const SavedPage = lazy(() => import('./pages/SavedPage'));
@@ -276,14 +275,7 @@ export default function App() {
             </PageErrorBoundary>
           }
         />
-        <Route
-          path="/expenses"
-          element={
-            <LazyPage>
-              <ExpenseTrackerPage />
-            </LazyPage>
-          }
-        />
+        <Route path="/expenses" element={<Navigate replace to="/trips" />} />
         <Route
           path="/trips"
           element={

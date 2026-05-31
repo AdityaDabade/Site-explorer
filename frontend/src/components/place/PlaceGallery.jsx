@@ -1,97 +1,71 @@
 import PropTypes from 'prop-types';
+import { motion } from 'framer-motion';
 
 /**
  * Displays place gallery with responsive layout.
  * Desktop: Large main image + 4 smaller images
  * Mobile: Horizontal scroll with dots
  */
-export default function PlaceGallery({ gallery, placeName, mobileGallery }) {
-  const hasSingleImage = gallery.length <= 1;
+export default function PlaceGallery({ gallery, locationName, mobileGallery, onStartGuide, placeName, rating }) {
   const primaryImage =
     gallery[0] ||
     mobileGallery[0] ||
     'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1200&auto=format&fit=crop&q=80';
 
-  if (hasSingleImage) {
-    return (
-      <section className="mb-6">
-        <div className="relative overflow-hidden rounded-2xl shadow-lg">
-          <img
-            src={primaryImage}
-            alt={placeName}
-            className="h-[300px] w-full rounded-2xl object-cover sm:h-[380px] lg:h-[450px]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-          <div className="absolute bottom-4 left-4 text-white">
-            <h1 className="text-2xl font-bold">{placeName}</h1>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   return (
-    <section className="overflow-hidden rounded-[var(--r-xl)]">
-      {/* Desktop Gallery */}
-      <div className="hidden gap-2 lg:grid lg:grid-cols-[1.2fr_1fr]">
-        <div className="overflow-hidden rounded-[var(--r-xl)]">
-          <img
-            alt={placeName}
-            className="h-full min-h-[420px] w-full object-cover"
-            src={primaryImage}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          {gallery.slice(1, 5).map((image, index) => (
-            <div key={`gallery-${index}`} className="relative overflow-hidden rounded-[var(--r-lg)]">
-              <img
-                alt={`${placeName} ${index + 2}`}
-                className="h-full min-h-[204px] w-full object-cover"
-                src={
-                  image ||
-                  'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80'
-                }
-              />
-              {index === 3 ? (
-                <button type="button" className="btn-ghost btn-sm absolute bottom-4 right-4">
-                  Show all photos
-                </button>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </div>
+    <motion.section
+      className="overflow-hidden rounded-3xl shadow-2xl shadow-slate-950/20"
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8 }}
+    >
+      <div className="group relative h-[350px] w-full overflow-hidden rounded-3xl lg:h-[500px]">
+        <motion.img
+          alt={placeName}
+          animate={{ scale: [1.03, 1.06, 1.03] }}
+          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+          whileHover={{ scale: 1.08 }}
+          className="h-full w-full scale-[1.03] object-cover transition-transform duration-700 lg:group-hover:scale-[1.08]"
+          src={primaryImage}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
-      {/* Mobile Gallery */}
-      <div className="scroll-row pb-3 lg:hidden">
-        {mobileGallery.map((image, index) => (
-          <div
-            key={`mobile-gallery-${index}`}
-            className="min-w-full overflow-hidden rounded-[var(--r-xl)]"
-          >
-            <img
-              alt={`${placeName} ${index + 1}`}
-              className="h-[320px] w-full object-cover"
-              src={image}
-            />
-          </div>
-        ))}
+        <div className="absolute left-4 top-4 flex max-w-[calc(100%-2rem)] flex-wrap items-center gap-2 rounded-full border border-white/30 bg-white/20 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-black/20 backdrop-blur-md sm:left-6 sm:top-6">
+          <span className="max-w-[13rem] truncate sm:max-w-none">📍 {locationName}</span>
+          <span className="hidden h-1 w-1 rounded-full bg-white/80 sm:inline-block" />
+          <span>⭐ {Number(rating || 4.8).toFixed(1)} Rating</span>
+        </div>
+
+        <div className="absolute bottom-6 left-5 right-5 pr-24 text-white sm:bottom-8 sm:left-8 sm:right-8">
+          <h1 className="max-w-3xl text-4xl font-bold leading-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.55)] sm:text-5xl lg:text-6xl">
+            {placeName}
+          </h1>
+        </div>
+
+        <button
+          type="button"
+          className="absolute bottom-5 right-5 rounded-full bg-gradient-to-r from-teal-400 via-cyan-400 to-sky-500 px-5 py-3 text-sm font-bold text-slate-950 shadow-xl shadow-cyan-950/30 transition duration-300 hover:scale-105 hover:shadow-2xl focus:outline-none focus:ring-2 focus:ring-white/80 sm:bottom-8 sm:right-8 sm:px-6"
+          onClick={onStartGuide}
+        >
+          🎧 AI Guide
+        </button>
       </div>
-      <div className="step-dots py-4 lg:hidden">
-        {mobileGallery.slice(0, 4).map((_, index) => (
-          <span key={`dot-${index}`} className={`step-dot ${index === 0 ? 'active' : ''}`} />
-        ))}
-      </div>
-    </section>
+    </motion.section>
   );
 }
 
 PlaceGallery.propTypes = {
   gallery: PropTypes.arrayOf(PropTypes.string),
+  locationName: PropTypes.string,
   mobileGallery: PropTypes.arrayOf(PropTypes.string).isRequired,
+  onStartGuide: PropTypes.func,
+  rating: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   placeName: PropTypes.string.isRequired
 };
 
 PlaceGallery.defaultProps = {
-  gallery: []
+  gallery: [],
+  locationName: 'TourVision destination',
+  onStartGuide: undefined,
+  rating: 4.8
 };

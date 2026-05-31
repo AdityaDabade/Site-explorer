@@ -128,22 +128,12 @@ export default function Navbar({ onChatOpen, user }) {
                     <button
                       type="button"
                       onClick={() => {
-                        navigate('/trip-planner');
+                        navigate('/trips');
                         setMenuOpen(false);
                       }}
                       className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
                     >
                       My Trips
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigate('/expenses');
-                        setMenuOpen(false);
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                    >
-                      Wishlist
                     </button>
                     <button type="button" onClick={onChatOpen} className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50">
                       Help & Support

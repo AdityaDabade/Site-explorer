@@ -8,6 +8,7 @@ import QRScanner from "../components/qr/QRScanner";
 import { useLocationContext } from "../context/LocationContext";
 import { useAuth } from "../context/AuthContext";
 import { parsePlaceIdFromQr } from "../utils/qr";
+import { resolvePlaceImage } from "../utils/placeImages";
 
 const CATEGORIES = [
   { icon: "🏛", label: "Monuments", color: "bg-amber-50 text-amber-600" },
@@ -34,15 +35,15 @@ const FALLBACK_PLACES = [
   },
   {
     id: 2,
-    name: "Marine Drive",
-    location_name: "Mumbai, India",
+    name: "Shaniwar Wada",
+    location_name: "Pune, India",
     distance: 3.4,
     rating: 4.8,
     review_count: 1820,
-    price: 250,
-    free_entry: false,
+    price: 0,
+    free_entry: true,
     has_ar: false,
-    image: "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=900&auto=format&fit=crop&q=80",
+    image: "https://commons.wikimedia.org/wiki/Special:FilePath/Shaniwar_Wada_Pune.jpg?width=900",
     score: 8.9,
   },
   {
@@ -60,15 +61,15 @@ const FALLBACK_PLACES = [
   },
   {
     id: 4,
-    name: "Sunset Cliffs",
-    location_name: "Goa, India",
+    name: "Sinhagad Fort",
+    location_name: "Pune, India",
     distance: 1.8,
     rating: 4.7,
     review_count: 954,
     price: 0,
     free_entry: true,
     has_ar: false,
-    image: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop&q=80",
+    image: "https://commons.wikimedia.org/wiki/Special:FilePath/Sinhagad-Fort.jpg?width=900",
     score: 8.8,
   },
 ];
@@ -84,7 +85,7 @@ function normalizePlace(place, index) {
     price: Number(place.price || place.entry_fee || 0),
     free_entry: Number(place.price || place.entry_fee || 0) === 0,
     has_ar: Boolean(place.has_ar || place.ar_model_url),
-    image: place.image || place.images?.[0] || FALLBACK_PLACES[index % FALLBACK_PLACES.length].image,
+    image: resolvePlaceImage(place, FALLBACK_PLACES[index % FALLBACK_PLACES.length].image),
     score: Number(place.score || 8.7 + (index % 5) * 0.2).toFixed(1),
   };
 }

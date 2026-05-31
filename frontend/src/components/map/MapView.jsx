@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import L from 'leaflet';
-import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet';
+import { useEffect } from 'react';
+import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import PlaceMarker from './PlaceMarker';
 
 const userIcon = L.divIcon({
@@ -31,12 +32,18 @@ const userIcon = L.divIcon({
 /**
  * Keeps the map view centered whenever coordinates change.
  */
-function RecenterMap({ center, zoom }) {
+function RecenterMap({ center, enabled, zoom }) {
   const map = useMap();
 
-  map.setView([center.lat, center.lng], zoom, {
-    animate: true
-  });
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    map.setView([center.lat, center.lng], zoom, {
+      animate: true
+    });
+  }, [center.lat, center.lng, enabled, map, zoom]);
 
   return null;
 }
@@ -46,17 +53,61 @@ RecenterMap.propTypes = {
     lat: PropTypes.number.isRequired,
     lng: PropTypes.number.isRequired
   }).isRequired,
+  enabled: PropTypes.bool,
   zoom: PropTypes.number.isRequired
+};
+
+RecenterMap.defaultProps = {
+  enabled: false
+};
+
+function FitRouteBounds({ enabled, routeCoordinates, routePanelVisible }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!enabled || !routeCoordinates?.length) {
+      return;
+    }
+
+    const bounds = L.latLngBounds(routeCoordinates);
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 640;
+
+    map.fitBounds(bounds, {
+      animate: true,
+      paddingTopLeft: isDesktop && routePanelVisible ? [72, 96] : [28, 72],
+      paddingBottomRight: isDesktop && routePanelVisible ? [380, 120] : [28, 250]
+    });
+  }, [enabled, map, routeCoordinates, routePanelVisible]);
+
+  return null;
+}
+
+FitRouteBounds.propTypes = {
+  enabled: PropTypes.bool,
+  routePanelVisible: PropTypes.bool,
+  routeCoordinates: PropTypes.arrayOf(
+    PropTypes.arrayOf(PropTypes.number)
+  )
+};
+
+FitRouteBounds.defaultProps = {
+  enabled: false,
+  routePanelVisible: false,
+  routeCoordinates: []
 };
 
 /**
  * Shared Leaflet map wrapper for place markers, routes, and user position.
  */
 export default function MapView({
+  autoFitRoute,
   center,
+  recenterOnCenterChange,
   onMarkerClick,
   places,
   routeCoordinates,
+  routePanelVisible,
+  selectedPlaceId,
   userLocation,
   zoom
 }) {
@@ -72,34 +123,63 @@ export default function MapView({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      <RecenterMap center={center} zoom={zoom} />
+      <RecenterMap center={center} enabled={recenterOnCenterChange} zoom={zoom} />
+      <FitRouteBounds enabled={autoFitRoute} routeCoordinates={routeCoordinates} routePanelVisible={routePanelVisible} />
 
       {userLocation ? (
-        <Marker icon={userIcon} position={[Number(userLocation.lat), Number(userLocation.lng)]} />
+        <Marker icon={userIcon} position={[Number(userLocation.lat), Number(userLocation.lng)]}>
+          <Popup>
+            <div className="space-y-1">
+              <p className="font-semibold">Your live location</p>
+              {userLocation.accuracy ? <p>Accuracy: {Math.round(userLocation.accuracy)} m</p> : null}
+            </div>
+          </Popup>
+        </Marker>
       ) : null}
       {places.map((place) => (
-        <PlaceMarker key={place.id || `${place.lat}-${place.lng}`} place={place} onClick={onMarkerClick} />
+        <PlaceMarker
+          key={place.id || `${place.lat}-${place.lng}`}
+          place={place}
+          selected={String(place.id) === String(selectedPlaceId)}
+          onClick={onMarkerClick}
+        />
       ))}
       {routeCoordinates?.length ? (
-        <Polyline
-          positions={routeCoordinates}
-          pathOptions={{
-            color: '#7dd3fc',
-            weight: 6,
-            opacity: 0.85
-          }}
-        />
+        <>
+          <Polyline
+            positions={routeCoordinates}
+            pathOptions={{
+              color: '#0f172a',
+              weight: 8,
+              opacity: 0.18
+            }}
+          />
+          <Polyline
+            className="tourvision-route-line"
+            positions={routeCoordinates}
+            pathOptions={{
+              color: '#1a73e8',
+              dashArray: '14 14',
+              lineCap: 'round',
+              lineJoin: 'round',
+              weight: 6,
+              opacity: 0.96
+            }}
+          />
+        </>
       ) : null}
     </MapContainer>
   );
 }
 
 MapView.propTypes = {
+  autoFitRoute: PropTypes.bool,
   center: PropTypes.shape({
     lat: PropTypes.number.isRequired,
     lng: PropTypes.number.isRequired
   }).isRequired,
   onMarkerClick: PropTypes.func,
+  recenterOnCenterChange: PropTypes.bool,
   places: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
@@ -111,7 +191,10 @@ MapView.propTypes = {
   routeCoordinates: PropTypes.arrayOf(
     PropTypes.arrayOf(PropTypes.number)
   ),
+  routePanelVisible: PropTypes.bool,
+  selectedPlaceId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   userLocation: PropTypes.shape({
+    accuracy: PropTypes.number,
     lat: PropTypes.number.isRequired,
     lng: PropTypes.number.isRequired
   }),
@@ -119,9 +202,13 @@ MapView.propTypes = {
 };
 
 MapView.defaultProps = {
+  autoFitRoute: false,
   onMarkerClick: undefined,
   places: [],
+  recenterOnCenterChange: false,
   routeCoordinates: [],
+  routePanelVisible: false,
+  selectedPlaceId: null,
   userLocation: null,
   zoom: 13
 };

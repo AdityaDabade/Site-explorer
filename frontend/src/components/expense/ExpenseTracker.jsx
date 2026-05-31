@@ -4,10 +4,11 @@ import ExpenseChart from './ExpenseChart';
 import { calculateTripSummary } from '../../utils/tripExpenses';
 
 const CATEGORY_OPTIONS = [
-  { value: 'Food', accent: 'bg-amber-100 text-amber-700', icon: '🍜' },
-  { value: 'Travel', accent: 'bg-sky-100 text-sky-700', icon: '🚕' },
-  { value: 'Stay', accent: 'bg-emerald-100 text-emerald-700', icon: '🏨' },
-  { value: 'Other', accent: 'bg-slate-100 text-slate-700', icon: '🧾' }
+  { value: 'Fuel', accent: 'bg-sky-100 text-sky-700', icon: 'FL' },
+  { value: 'Food', accent: 'bg-amber-100 text-amber-700', icon: 'FD' },
+  { value: 'Stay', accent: 'bg-emerald-100 text-emerald-700', icon: 'HT' },
+  { value: 'Tickets', accent: 'bg-violet-100 text-violet-700', icon: 'TK' },
+  { value: 'Miscellaneous', accent: 'bg-slate-100 text-slate-700', icon: 'MS' }
 ];
 
 function getCategoryMeta(category) {
@@ -25,8 +26,12 @@ function createInitialForm(trip) {
   };
 }
 
+function formatCurrency(value) {
+  return `INR ${Number(value || 0).toFixed(2)}`;
+}
+
 /**
- * Trip-scoped expense manager with smart splitting and settlement-friendly data.
+ * Trip-scoped expense manager with quick travel actions and settlement-friendly data.
  */
 export default function ExpenseTracker({ onTripUpdate, trip }) {
   const [form, setForm] = useState(() => createInitialForm(trip));
@@ -34,6 +39,7 @@ export default function ExpenseTracker({ onTripUpdate, trip }) {
   const [formOpen, setFormOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [sortBy, setSortBy] = useState('date-desc');
+  const expensesLocked = trip.status === 'Cancelled';
 
   const summary = useMemo(() => calculateTripSummary(trip), [trip]);
   const chartData = useMemo(() => {
@@ -98,6 +104,18 @@ export default function ExpenseTracker({ onTripUpdate, trip }) {
     });
   };
 
+  const openQuickExpense = (category) => {
+    setForm((current) => ({
+      ...current,
+      category,
+      name: category === 'Fuel' ? 'Fuel stop' : category === 'Food' ? 'Meal break' : category === 'Stay' ? 'Hotel stay' : category === 'Tickets' ? 'Entry tickets' : 'Trip expense'
+    }));
+    setFormOpen(true);
+    window.setTimeout(() => {
+      document.getElementById('trip-expense-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+  };
+
   const handleAddExpense = (event) => {
     event.preventDefault();
 
@@ -133,7 +151,9 @@ export default function ExpenseTracker({ onTripUpdate, trip }) {
 
     onTripUpdate({
       ...trip,
-      expenses: [nextExpense, ...(trip.expenses || [])]
+      expenses: [nextExpense, ...(trip.expenses || [])],
+      totalSpent: Number(trip.totalSpent || 0) + amount,
+      updatedAt: new Date().toISOString()
     });
     setForm(createInitialForm(trip));
     setFormOpen(false);
@@ -143,37 +163,57 @@ export default function ExpenseTracker({ onTripUpdate, trip }) {
   const handleDeleteExpense = (expenseId) => {
     onTripUpdate({
       ...trip,
-      expenses: (trip.expenses || []).filter((expense) => expense.id !== expenseId)
+      expenses: (trip.expenses || []).filter((expense) => expense.id !== expenseId),
+      updatedAt: new Date().toISOString()
     });
   };
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-[var(--shadow-card)] sm:p-6">
+      <section className="rounded-3xl border border-white/80 bg-white p-5 shadow-xl shadow-slate-200/70 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Trip Expenses</p>
-            <h2 className="mt-2 font-heading text-2xl font-bold text-slate-900">Add expense to {trip.name}</h2>
-            <p className="mt-2 text-sm text-slate-500">Track who paid, who joined, and how much each person owes.</p>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-600">Trip expenses</p>
+            <h2 className="mt-2 text-2xl font-black text-slate-950">Live ledger for {trip.name}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-500">Fuel, food, stays, tickets, and shared costs stay linked to this trip lifecycle.</p>
           </div>
-          <button type="button" onClick={() => setFormOpen((current) => !current)} className="btn-primary btn-sm">
+          <button type="button" disabled={expensesLocked} onClick={() => setFormOpen((current) => !current)} className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50">
             Add Expense
           </button>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm text-slate-500">Total Spent</p>
-            <p className="mt-2 font-heading text-3xl font-extrabold text-slate-900">₹{summary.total.toFixed(2)}</p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <p className="text-sm font-bold text-slate-500">Total Spent</p>
+            <p className="mt-2 text-3xl font-black text-slate-950">{formatCurrency(summary.total)}</p>
           </div>
-          <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
-            <p className="text-sm text-emerald-700">Per Person Share</p>
-            <p className="mt-2 font-heading text-3xl font-extrabold text-emerald-700">₹{summary.totalPerPerson.toFixed(2)}</p>
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+            <p className="text-sm font-bold text-emerald-700">Per Person Share</p>
+            <p className="mt-2 text-3xl font-black text-emerald-700">{formatCurrency(summary.totalPerPerson)}</p>
+          </div>
+          <div className="rounded-2xl border border-violet-100 bg-violet-50 p-4">
+            <p className="text-sm font-bold text-violet-700">Trip Budget</p>
+            <p className="mt-2 text-3xl font-black text-violet-700">{trip.totalBudget ? formatCurrency(trip.totalBudget) : 'Open'}</p>
           </div>
         </div>
 
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {CATEGORY_OPTIONS.slice(0, 4).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              disabled={expensesLocked}
+              onClick={() => openQuickExpense(option.value)}
+              className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-left transition duration-300 hover:-translate-y-1 hover:bg-white hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span className={`inline-flex h-10 w-10 items-center justify-center rounded-xl text-xs font-black ${option.accent}`}>{option.icon}</span>
+              <p className="mt-3 text-sm font-black text-slate-900">+ {option.value}</p>
+            </button>
+          ))}
+        </div>
+
         {formOpen ? (
-          <form className="mt-6 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-5" onSubmit={handleAddExpense}>
+          <form id="trip-expense-form" className="mt-6 space-y-4 rounded-3xl border border-slate-200 bg-slate-50 p-5" onSubmit={handleAddExpense}>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="input-wrap">
                 <span className="input-label">Expense Name</span>
@@ -226,7 +266,7 @@ export default function ExpenseTracker({ onTripUpdate, trip }) {
                       key={participant}
                       type="button"
                       onClick={() => toggleParticipant(participant)}
-                      className={`rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 ${
+                      className={`rounded-full px-4 py-2 text-sm font-bold transition-all duration-300 ${
                         active ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100'
                       }`}
                     >
@@ -237,18 +277,12 @@ export default function ExpenseTracker({ onTripUpdate, trip }) {
               </div>
             </div>
 
-            {formError ? (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
-                {formError}
-              </div>
-            ) : null}
+            {formError ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{formError}</div> : null}
 
-            <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-800">
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
               {form.participantNames.length ? (
                 <p>
-                  Split preview: ₹
-                  {(Number(form.amount || 0) / Math.max(form.participantNames.length, 1)).toFixed(2)}
-                  {' '}per person across {form.participantNames.length} participant(s)
+                  Split preview: {formatCurrency(Number(form.amount || 0) / Math.max(form.participantNames.length, 1))} per person across {form.participantNames.length} participant(s)
                 </p>
               ) : (
                 <p>Select participants to preview the split.</p>
@@ -256,10 +290,10 @@ export default function ExpenseTracker({ onTripUpdate, trip }) {
             </div>
 
             <div className="flex justify-end gap-3">
-              <button type="button" className="btn-outline btn-sm" onClick={() => setFormOpen(false)}>
+              <button type="button" className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700" onClick={() => setFormOpen(false)}>
                 Cancel
               </button>
-              <button type="submit" className="btn-primary btn-sm">
+              <button type="submit" className="rounded-2xl bg-teal-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg">
                 Save Expense
               </button>
             </div>
@@ -267,11 +301,11 @@ export default function ExpenseTracker({ onTripUpdate, trip }) {
         ) : null}
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-[var(--shadow-card)] sm:p-6">
+      <section className="rounded-3xl border border-white/80 bg-white p-5 shadow-xl shadow-slate-200/70 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Expense List</p>
-            <h3 className="mt-2 font-heading text-xl font-bold text-slate-900">Trip ledger</h3>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Expense list</p>
+            <h3 className="mt-2 text-xl font-black text-slate-950">Active trip ledger</h3>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -306,17 +340,17 @@ export default function ExpenseTracker({ onTripUpdate, trip }) {
                 const categoryMeta = getCategoryMeta(expense.category);
 
                 return (
-                  <article key={expense.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]">
+                  <article key={expense.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-3">
-                          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-lg shadow-sm ring-1 ring-slate-200">
+                          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-xs font-black shadow-sm ring-1 ring-slate-200">
                             {categoryMeta.icon}
                           </span>
                           <div className="min-w-0">
-                            <p className="truncate font-semibold text-slate-900">{expense.name}</p>
+                            <p className="truncate font-black text-slate-900">{expense.name}</p>
                             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-                              <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${categoryMeta.accent}`}>
+                              <span className={`rounded-full px-2.5 py-1 text-xs font-black ${categoryMeta.accent}`}>
                                 {expense.category}
                               </span>
                               <span>{expense.peopleCount} people</span>
@@ -325,21 +359,15 @@ export default function ExpenseTracker({ onTripUpdate, trip }) {
                           </div>
                         </div>
 
-                        <p className="mt-3 text-sm text-slate-500">Paid by {expense.paidBy}</p>
-                        <p className="mt-2 text-sm text-slate-500">Participants: {expense.participants.join(', ')}</p>
+                        <p className="mt-3 text-sm font-semibold text-slate-500">Paid by {expense.paidBy}</p>
+                        <p className="mt-2 text-sm font-semibold text-slate-500">Participants: {expense.participants.join(', ')}</p>
                       </div>
 
                       <div className="text-right">
-                        <p className="font-heading text-xl font-bold text-slate-900">₹{Number(expense.amount).toFixed(2)}</p>
+                        <p className="text-xl font-black text-slate-900">{formatCurrency(expense.amount)}</p>
                         <p className="mt-2 text-sm text-slate-500">Total amount</p>
-                        <p className="mt-3 font-heading text-lg font-extrabold text-emerald-700">
-                          ₹{Number(expense.splitAmount || 0).toFixed(2)} per person
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteExpense(expense.id)}
-                          className="mt-3 rounded-lg px-2 py-1 text-sm font-semibold text-rose-600 transition-all duration-300 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/60"
-                        >
+                        <p className="mt-3 text-lg font-black text-emerald-700">{formatCurrency(expense.splitAmount)} per person</p>
+                        <button type="button" onClick={() => handleDeleteExpense(expense.id)} className="mt-3 rounded-lg px-2 py-1 text-sm font-bold text-rose-600 transition-all duration-300 hover:bg-rose-50">
                           Delete
                         </button>
                       </div>
@@ -349,21 +377,37 @@ export default function ExpenseTracker({ onTripUpdate, trip }) {
               })}
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-              <p className="font-semibold text-slate-900">No expenses added yet</p>
-              <p className="mt-2 text-sm text-slate-500">Add your first expense to start splitting this trip.</p>
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+              <p className="font-bold text-slate-900">No active expenses yet</p>
+              <p className="mt-2 text-sm text-slate-500">Use quick actions to add fuel, food, stay, or ticket costs during the trip.</p>
             </div>
           )}
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-[var(--shadow-card)] sm:p-6">
+      <section className="rounded-3xl border border-white/80 bg-white p-5 shadow-xl shadow-slate-200/70 sm:p-6">
         <div className="mb-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Category Overview</p>
-          <h3 className="mt-2 font-heading text-xl font-bold text-slate-900">Expense breakdown</h3>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Category overview</p>
+          <h3 className="mt-2 text-xl font-black text-slate-950">Expense breakdown</h3>
         </div>
         <ExpenseChart data={chartData} />
       </section>
+
+      {!expensesLocked ? (
+        <div className="fixed bottom-24 right-4 z-30 grid gap-2 lg:hidden">
+          {CATEGORY_OPTIONS.slice(0, 4).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => openQuickExpense(option.value)}
+              className={`h-12 w-12 rounded-full text-xs font-black shadow-xl ${option.accent}`}
+              aria-label={`Add ${option.value} expense`}
+            >
+              {option.icon}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -386,6 +430,9 @@ ExpenseTracker.propTypes = {
     ),
     id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
-    participants: PropTypes.arrayOf(PropTypes.string).isRequired
+    participants: PropTypes.arrayOf(PropTypes.string).isRequired,
+    status: PropTypes.string,
+    totalBudget: PropTypes.number,
+    totalSpent: PropTypes.number
   }).isRequired
 };

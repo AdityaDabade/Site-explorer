@@ -45,10 +45,10 @@ export default function SidebarModern() {
   }, [location]);
 
   const navItems = [
-    { label: 'Explore', icon: '🗺', path: '/', active: location.pathname === '/' },
-    { label: 'Nearby', icon: '📍', path: '/nearby', active: location.pathname === '/nearby' },
-    { label: 'Wishlist', icon: '❤️', path: '/expenses', active: location.pathname === '/expenses' },
-    { label: 'My Trips', icon: '✈️', path: '/trip-planner', active: location.pathname === '/trip-planner' },
+    { label: 'Home', icon: 'TV', path: '/', active: location.pathname === '/' },
+    { label: 'Nearby', icon: 'MAP', path: '/nearby', active: location.pathname === '/nearby' },
+    { label: 'Trip Planner', icon: 'CAL', path: '/trip-planner', active: location.pathname === '/trip-planner' },
+    { label: 'My Trips', icon: 'BAG', path: '/trips', active: location.pathname.startsWith('/trips') },
   ];
 
   const handleNavigate = (path) => {
@@ -108,7 +108,7 @@ export default function SidebarModern() {
           {isAuthenticated ? (
             <button
               type="button"
-              onClick={() => handleNavigate('/expenses')}
+              onClick={() => handleNavigate('/profile')}
               className="w-full text-left text-sm font-semibold text-slate-900 hover:text-teal-600"
             >
               Account Settings

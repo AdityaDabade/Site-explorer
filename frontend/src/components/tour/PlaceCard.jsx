@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
+import { resolvePlaceImage } from '../../utils/placeImages';
 
 /**
  * Airbnb-style place listing card with media-first layout and upfront pricing.
  */
 export default function PlaceCard({ meta, onSelect, place }) {
   const [saved, setSaved] = useState(false);
-  const image = place.image || place.images?.[0] || 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop&q=80';
+  const image = resolvePlaceImage(
+    place,
+    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop&q=80'
+  );
   const rating = Number(place.rating || 4.8).toFixed(1);
   const distance = place.distance ? `${Number(place.distance).toFixed(1)} km` : 'Nearby';
   const score = Number(place.score || 8.9).toFixed(1);

@@ -1,4 +1,5 @@
 import { FALLBACK_PLACES } from '../constants/homeData';
+import { resolvePlaceImage } from './placeImages';
 
 /**
  * Normalizes a raw place object (from API) into the shape the UI expects.
@@ -29,10 +30,7 @@ export function normalizePlace(place, index) {
     price: Number(place.price || place.entry_fee || 0),
     free_entry: Number(place.price || place.entry_fee || 0) === 0,
     has_ar: Boolean(place.has_ar || place.ar_model_url),
-    image:
-      place.image ||
-      place.images?.[0] ||
-      FALLBACK_PLACES[index % FALLBACK_PLACES.length].image,
+    image: resolvePlaceImage(place, FALLBACK_PLACES[index % FALLBACK_PLACES.length].image),
     score: Number(place.score || 8.7 + (index % 5) * 0.2).toFixed(1),
     region:
       place.region ||

@@ -22,7 +22,7 @@ export default function SidebarItem({
         aria-label={isCollapsed ? label : undefined}
         title={isCollapsed ? label : undefined}
         className={[
-          'relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl text-sm font-semibold transition-all duration-300 hover:scale-[1.08] hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/60 focus-visible:ring-offset-2',
+          'relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl text-sm font-semibold transition-colors duration-200 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/60 focus-visible:ring-offset-2',
           isCollapsed ? 'justify-center' : 'justify-start',
           isActive
             ? 'bg-gradient-to-br from-teal-500 to-purple-600 text-white shadow-lg shadow-teal-500/25'
@@ -45,7 +45,7 @@ export default function SidebarItem({
       {showTooltip && isCollapsed ? (
         <span
           role="tooltip"
-          className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white opacity-0 shadow-xl transition-all duration-300 group-hover:translate-x-1 group-hover:opacity-100 group-focus-within:translate-x-1 group-focus-within:opacity-100"
+          className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
         >
           {label}
         </span>

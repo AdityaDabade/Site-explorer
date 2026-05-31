@@ -1,376 +1,583 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { planTrip } from '../api/tripApi';
-import { extractData, extractMessage } from '../api/responseUtils';
+import { Link, useNavigate } from 'react-router-dom';
 import MapView from '../components/map/MapView';
-import CostPrediction from '../components/trip/CostPrediction';
+import {
+  DEFAULT_ORIGIN,
+  TRANSPORT_OPTIONS,
+  estimateTripCosts,
+  estimateWeather,
+  fetchRoutePlan,
+  formatCurrency,
+  formatDistance,
+  formatDuration,
+  resolveDestinationPlace
+} from '../utils/tripPlanning';
+import { TRIP_STATUSES, createTrip, readTripsFromStorage, updateTripStatus, writeTripsToStorage } from '../utils/tripExpenses';
 
-const STEPS = [
-  { label: 'Destinations' },
-  { label: 'Dates' },
-  { label: 'Transport' },
-  { label: 'Group' }
-];
+const QUICK_DESTINATIONS = ['Sinhagad', 'Rajgad', 'Torna', 'Lohagad', 'Mumbai', 'Goa', 'Jaipur', 'Delhi'];
 
-const QUICK_DESTINATIONS = ['Delhi', 'Mumbai', 'Jaipur', 'Goa', 'Bengaluru', 'Udaipur'];
-const QUICK_DATES = ['This Weekend', 'Next Week', 'Next Month'];
-const TRANSPORT_OPTIONS = [
-  { id: 'car', icon: '🚗', title: 'Car', description: 'Best for flexible intercity travel', cost: 'Avg. ₹12/km' },
-  { id: 'train', icon: '🚆', title: 'Train', description: 'Comfortable and efficient for long routes', cost: 'Avg. ₹1,200/day' },
-  { id: 'bike', icon: '🏍️', title: 'Bike', description: 'Great for scenic and compact trips', cost: 'Avg. ₹8/km' },
-  { id: 'bus', icon: '🚌', title: 'Bus', description: 'Budget-friendly and group-ready', cost: 'Avg. ₹700/day' }
-];
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
 
-function StepHeader({ currentStep }) {
+function addDaysIso(days) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function getTripDays(startDate, endDate) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const diff = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+  return Math.max(1, Number.isFinite(diff) ? diff : 1);
+}
+
+function getDefaultTravelerNames(count) {
+  return Array.from({ length: Math.max(Number(count || 1), 1) }, (_, index) => `Traveler ${index + 1}`);
+}
+
+function StepCard({ active, label, meta, value }) {
   return (
-    <div className="mb-8">
-      <div className="mb-5 flex items-center gap-4">
-        {STEPS.map((step, index) => (
-          <div key={step.label} className="flex flex-1 items-center gap-3">
-            <div
-              className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold ${
-                index <= currentStep ? 'bg-[var(--c-primary)] text-white' : 'bg-[var(--c-surface-inset)] text-[var(--c-text-secondary)]'
-              }`}
-            >
-              {index + 1}
-            </div>
-            <div className="hide-mobile">
-              <p className={`text-sm font-semibold ${index <= currentStep ? 'text-[var(--c-text-primary)]' : 'text-[var(--c-text-secondary)]'}`}>
-                {step.label}
-              </p>
-            </div>
-            {index < STEPS.length - 1 ? (
-              <div className={`h-[2px] flex-1 ${index < currentStep ? 'bg-[var(--c-primary)]' : 'bg-[var(--c-border)]'}`} />
-            ) : null}
-          </div>
-        ))}
-      </div>
+    <div className={`rounded-2xl border p-4 ${active ? 'border-teal-200 bg-teal-50' : 'border-slate-200 bg-white'}`}>
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">{label}</p>
+      <p className="mt-2 text-xl font-black text-slate-950">{value}</p>
+      <p className="mt-1 text-sm font-bold text-slate-500">{meta}</p>
     </div>
   );
 }
 
-/**
- * Multi-step trip planner with a Booking/Airbnb-style checkout flow.
- */
-export default function TripPlannerPage() {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [tripResult, setTripResult] = useState(null);
-  const [destinationInput, setDestinationInput] = useState('');
-  const [form, setForm] = useState({
-    destinations: ['Jaipur', 'Delhi'],
-    dates: 'This Weekend',
-    transportMode: 'car',
-    adults: 2,
-    children: 0,
-    seniors: 0
-  });
+function DestinationPicker({ destinationInput, destinations, onAdd, onInputChange, onRemove }) {
+  const filtered = QUICK_DESTINATIONS.filter((destination) => destination.toLowerCase().includes(destinationInput.toLowerCase()));
 
-  const totalTravelers = form.adults + form.children + form.seniors;
-
-  const summaryTimeline = useMemo(() => {
-    if (!tripResult) {
-      return [];
-    }
-
-    const routeStops = tripResult?.route?.stops || tripResult?.destinations || form.destinations;
-    return routeStops.map((stop, index) => ({
-      day: index + 1,
-      title: stop.name || stop,
-      time: `${9 + index}:00 AM`
-    }));
-  }, [form.destinations, tripResult]);
-
-  const routeCoordinates = useMemo(() => {
-    const points = tripResult?.route?.coordinates || [];
-    return points.map((point) => (Array.isArray(point) ? point : [point.lat, point.lng]));
-  }, [tripResult]);
-
-  const mapCenter = routeCoordinates.length
-    ? { lat: routeCoordinates[0][0], lng: routeCoordinates[0][1] }
-    : { lat: 20.5937, lng: 78.9629 };
-
-  const addDestination = (value) => {
-    const trimmed = value.trim();
-    if (!trimmed || form.destinations.includes(trimmed)) {
-      return;
-    }
-    setForm((current) => ({ ...current, destinations: [...current.destinations, trimmed] }));
-    setDestinationInput('');
-  };
-
-  const removeDestination = (value) => {
-    setForm((current) => ({
-      ...current,
-      destinations: current.destinations.filter((item) => item !== value)
-    }));
-  };
-
-  const updateCount = (key, delta) => {
-    setForm((current) => ({
-      ...current,
-      [key]: Math.max(0, current[key] + delta)
-    }));
-  };
-
-  const handleSubmit = async () => {
-    setLoading(true);
-
-    try {
-      const response = await planTrip({
-        destinations: form.destinations,
-        duration: form.destinations.length,
-        transport: form.transportMode,
-        members: {
-          adults: form.adults,
-          children: form.children,
-          seniors: form.seniors
-        },
-        datePreference: form.dates
-      });
-      const data = extractData(response);
-      setTripResult(data?.trip || data);
-      toast.success('Trip plan generated.');
-    } catch (error) {
-      toast.error(extractMessage(error, 'Unable to generate this trip right now.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const renderCurrentStep = () => {
-    if (currentStep === 0) {
-      return (
-        <div className="space-y-5">
-          <div className="input-wrap">
-            <span className="input-label">Destinations</span>
-            <input
-              className="input"
-              placeholder="Search and add destinations"
-              value={destinationInput}
-              onChange={(event) => setDestinationInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  addDestination(destinationInput);
-                }
-              }}
-            />
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {form.destinations.map((destination) => (
-              <button key={destination} type="button" className="chip active" onClick={() => removeDestination(destination)}>
-                {destination} ✕
-              </button>
-            ))}
-          </div>
-
-          <div>
-            <p className="input-label mb-2">Most visited</p>
-            <div className="filter-chips pb-0">
-              {QUICK_DESTINATIONS.map((item) => (
-                <button key={item} type="button" className="chip" onClick={() => addDestination(item)}>
-                  {item}
-                </button>
-              ))}
-            </div>
-          </div>
+  return (
+    <section className="rounded-3xl border border-white/80 bg-white p-6 shadow-xl shadow-slate-200/70">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-teal-600">Select destinations</p>
+          <h2 className="mt-2 text-2xl font-black text-slate-950">Build the route before the journey starts</h2>
         </div>
-      );
-    }
-
-    if (currentStep === 1) {
-      return (
-        <div className="space-y-5">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="card card-bordered p-5">
-              <p className="text-sm font-semibold">Start</p>
-              <div className="mt-4 rounded-[var(--r-md)] bg-[var(--c-surface-inset)] p-4 text-center">
-                <p className="font-heading text-lg">Fri</p>
-                <p className="text-sm text-[var(--c-text-secondary)]">08 Mar</p>
-              </div>
-            </div>
-            <div className="card card-bordered p-5">
-              <p className="text-sm font-semibold">End</p>
-              <div className="mt-4 rounded-[var(--r-md)] bg-[var(--c-surface-inset)] p-4 text-center">
-                <p className="font-heading text-lg">Sun</p>
-                <p className="text-sm text-[var(--c-text-secondary)]">10 Mar</p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <p className="input-label mb-2">Quick options</p>
-            <div className="filter-chips pb-0">
-              {QUICK_DATES.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  className={`chip ${form.dates === item ? 'active' : ''}`}
-                  onClick={() => setForm((current) => ({ ...current, dates: item }))}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-          </div>
+        <div className="flex min-w-0 gap-2 lg:w-[420px]">
+          <input
+            className="input"
+            placeholder="Search or type a place"
+            value={destinationInput}
+            onChange={(event) => onInputChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                onAdd(destinationInput);
+              }
+            }}
+          />
+          <button type="button" className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white" onClick={() => onAdd(destinationInput)}>
+            Add
+          </button>
         </div>
-      );
-    }
+      </div>
 
-    if (currentStep === 2) {
-      return (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {TRANSPORT_OPTIONS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => setForm((current) => ({ ...current, transportMode: option.id }))}
-              className={`card card-bordered p-5 text-left transition ${
-                form.transportMode === option.id ? 'border-[var(--c-primary)] bg-[var(--c-primary-light)] shadow-[var(--shadow-card)]' : ''
-              }`}
-            >
-              <div className="text-4xl">{option.icon}</div>
-              <h3 className="mt-4">{option.title}</h3>
-              <p className="mt-2 text-sm text-[var(--c-text-secondary)]">{option.description}</p>
-              <p className="mt-3 text-sm font-semibold text-[var(--c-primary)]">{option.cost}</p>
-            </button>
-          ))}
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-4">
-        {[
-          ['Adults', 'adults', 'Age 13+'],
-          ['Children', 'children', 'Age 2–12'],
-          ['Seniors', 'seniors', 'Age 60+']
-        ].map(([label, key, helper]) => (
-          <div key={key} className="flex items-center justify-between rounded-[var(--r-lg)] border border-[var(--c-border)] bg-white p-5">
-            <div>
-              <p className="font-semibold">{label}</p>
-              <p className="text-sm text-[var(--c-text-secondary)]">{helper}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button type="button" className="btn-outline btn-sm !px-3" onClick={() => updateCount(key, -1)}>-</button>
-              <span className="min-w-[24px] text-center font-semibold">{form[key]}</span>
-              <button type="button" className="btn-outline btn-sm !px-3" onClick={() => updateCount(key, 1)}>+</button>
-            </div>
-          </div>
+      <div className="mt-5 flex flex-wrap gap-2">
+        {(destinationInput ? filtered : QUICK_DESTINATIONS).map((destination) => (
+          <button
+            key={destination}
+            type="button"
+            className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-black text-slate-700 transition hover:border-teal-200 hover:bg-teal-50"
+            onClick={() => onAdd(destination)}
+          >
+            {destination}
+          </button>
         ))}
       </div>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {destinations.length ? (
+          destinations.map((destination, index) => {
+            const place = resolveDestinationPlace(destination, index);
+            return (
+              <button
+                key={destination}
+                type="button"
+                className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
+                onClick={() => onRemove(destination)}
+              >
+                <div className="h-24 bg-slate-200">
+                  {place.image ? <img alt="" className="h-full w-full object-cover" src={place.image} /> : null}
+                </div>
+                <div className="p-4">
+                  <p className="font-black text-slate-950">{index + 1}. {destination}</p>
+                  <p className="mt-1 text-sm font-bold text-slate-500">{place.terrain}</p>
+                  <p className="mt-3 text-xs font-black uppercase tracking-[0.14em] text-rose-500">Tap to remove</p>
+                </div>
+              </button>
+            );
+          })
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center font-bold text-slate-500 sm:col-span-2 xl:col-span-4">
+            Add destinations to calculate distance, ETA, cost, and weather.
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function DateTransportPanel({ duration, form, onChange, routePlan }) {
+  return (
+    <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+      <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-xl shadow-slate-200/70">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Select dates</p>
+        <h2 className="mt-2 text-2xl font-black text-slate-950">Trip window</h2>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <label className="input-wrap">
+            <span className="input-label">Start date</span>
+            <input className="input" type="date" value={form.startDate} onChange={(event) => onChange('startDate', event.target.value)} />
+          </label>
+          <label className="input-wrap">
+            <span className="input-label">End date</span>
+            <input className="input" min={form.startDate} type="date" value={form.endDate} onChange={(event) => onChange('endDate', event.target.value)} />
+          </label>
+        </div>
+        <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+          <div className="grid gap-3 sm:grid-cols-[1fr_160px] sm:items-end">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Duration</p>
+              <p className="mt-2 text-3xl font-black text-slate-950">{duration} day{duration === 1 ? '' : 's'}</p>
+              <p className="mt-1 text-sm font-bold text-slate-500">{form.durationManual ? 'Manual override active' : 'Auto-calculated from dates'}</p>
+            </div>
+            <label className="input-wrap">
+              <span className="input-label">Override days</span>
+              <input className="input" min="1" type="number" value={form.duration} onChange={(event) => onChange('duration', Number(event.target.value || 1))} />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-xl shadow-slate-200/70">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Select transport</p>
+        <h2 className="mt-2 text-2xl font-black text-slate-950">Mode and route ETA</h2>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          {TRANSPORT_OPTIONS.map((transport) => {
+            const active = form.transport === transport.id;
+            return (
+              <button
+                key={transport.id}
+                type="button"
+                className={`rounded-2xl border p-4 text-left transition hover:-translate-y-0.5 ${active ? 'border-teal-300 bg-teal-50 shadow-lg shadow-teal-100' : 'border-slate-200 bg-slate-50'}`}
+                onClick={() => onChange('transport', transport.id)}
+              >
+                <p className="font-black text-slate-950">{transport.label}</p>
+                <p className="mt-1 text-sm font-bold text-slate-500">{formatCurrency(transport.ratePerKm)}/km estimate</p>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <StepCard active label="Distance" meta={routePlan?.source === 'osrm' ? 'OSRM road route' : 'Direct fallback'} value={formatDistance(routePlan?.totalDistanceKm || 0)} />
+          <StepCard active label="ETA" meta="Estimated travel time" value={formatDuration(routePlan?.totalDurationMin || 0)} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CostWeatherPanel({ costs, destinations, form, routePlan }) {
+  const weather = destinations.map((destination, index) => ({
+    ...resolveDestinationPlace(destination, index),
+    ...estimateWeather(destination, form.startDate)
+  }));
+
+  return (
+    <section className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
+      <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-xl shadow-slate-200/70">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Estimated cost</p>
+        <h2 className="mt-2 text-2xl font-black text-slate-950">Budget prediction</h2>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {[
+            ['Fuel / travel', costs.fuelCost + costs.travelCost],
+            ['Entry fees', costs.entryFees],
+            ['Food', costs.foodCost],
+            ['Stay', costs.stayCost],
+            ['Miscellaneous', costs.miscellaneous],
+            ['Per person', costs.perPerson]
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">{label}</p>
+              <p className="mt-2 text-xl font-black text-slate-950">{formatCurrency(value)}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-5 rounded-2xl bg-emerald-50 p-5">
+          <div className="flex items-center justify-between gap-4">
+            <p className="font-black text-emerald-800">Estimated trip budget</p>
+            <p className="text-3xl font-black text-emerald-700">{formatCurrency(costs.total)}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-xl shadow-slate-200/70">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Weather forecast</p>
+        <h2 className="mt-2 text-2xl font-black text-slate-950">Trekking readiness</h2>
+        <div className="mt-5 space-y-3">
+          {weather.length ? (
+            weather.map((item) => (
+              <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-black text-slate-950">{item.name}</p>
+                    <p className="mt-1 text-sm font-bold text-slate-500">{item.trekking}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-black text-slate-950">{item.temperature} C</p>
+                    <p className="text-sm font-bold text-sky-600">{item.rainChance}% rain</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center font-bold text-slate-500">
+              Weather appears after you add destinations.
+            </div>
+          )}
+        </div>
+        <p className="mt-4 text-xs font-bold text-slate-400">Forecast is an in-app estimate for planning. Live weather API can replace this later.</p>
+      </div>
+    </section>
+  );
+}
+
+function TravelerDetails({ form, onTravelerCountChange, onTravelerNameChange }) {
+  return (
+    <section className="rounded-3xl border border-white/80 bg-white p-6 shadow-xl shadow-slate-200/70">
+      <div className="grid gap-4 sm:grid-cols-[1fr_180px] sm:items-end">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Traveler Details</p>
+          <h2 className="mt-2 text-2xl font-black text-slate-950">Names saved into the trip</h2>
+        </div>
+        <label className="input-wrap">
+          <span className="input-label">Traveler count</span>
+          <input className="input" min="1" type="number" value={form.travelerCount} onChange={(event) => onTravelerCountChange(Number(event.target.value || 1))} />
+        </label>
+      </div>
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {form.travelerNames.map((name, index) => (
+          <label key={`traveler-${index + 1}`} className="input-wrap">
+            <span className="input-label">Traveler {index + 1}</span>
+            <input className="input" value={name} onChange={(event) => onTravelerNameChange(index, event.target.value)} />
+          </label>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RoutePreview({ onLocateMe, origin, originStatus, routePlan, selectedPlaceId, setSelectedPlaceId }) {
+  const places = routePlan?.stops || [];
+  const center = places.find((place) => String(place.id) === String(selectedPlaceId)) || places[0] || origin || DEFAULT_ORIGIN;
+
+  return (
+    <section className="overflow-hidden rounded-3xl border border-white/80 bg-white shadow-xl shadow-slate-200/70">
+      <div className="flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Route preview map</p>
+          <h2 className="mt-2 text-2xl font-black text-slate-950">Markers, route lines, distance, and ETA</h2>
+          <p className="mt-1 text-sm font-bold text-slate-500">Route starts from {origin.name || 'Current Location'}{originStatus ? ` - ${originStatus}` : ''}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm font-black text-slate-500">
+          <button type="button" className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white" onClick={onLocateMe}>
+            Locate Me
+          </button>
+          <span>{formatDistance(routePlan?.totalDistanceKm || 0)} / {formatDuration(routePlan?.totalDurationMin || 0)}</span>
+        </div>
+      </div>
+      <div className="h-[420px]">
+        <MapView
+          center={center}
+          onMarkerClick={(place) => setSelectedPlaceId(place.id)}
+          places={places}
+          recenterOnCenterChange
+          routeCoordinates={routePlan?.routeCoordinates || []}
+          selectedPlaceId={selectedPlaceId}
+          userLocation={origin}
+          zoom={places.length ? 10 : 12}
+        />
+      </div>
+    </section>
+  );
+}
+
+export default function TripPlannerPage() {
+  const navigate = useNavigate();
+  const [destinationInput, setDestinationInput] = useState('');
+  const [origin, setOrigin] = useState(DEFAULT_ORIGIN);
+  const [originStatus, setOriginStatus] = useState('Using fallback until GPS is allowed');
+  const [selectedPlaceId, setSelectedPlaceId] = useState(null);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [savedTripId, setSavedTripId] = useState(null);
+  const [routePlan, setRoutePlan] = useState({
+    routeCoordinates: [],
+    segments: [],
+    source: 'direct',
+    stops: [],
+    totalDistanceKm: 0,
+    totalDurationMin: 0
+  });
+  const [form, setForm] = useState({
+    destinations: [],
+    duration: getTripDays(todayIso(), addDaysIso(2)),
+    durationManual: false,
+    endDate: addDaysIso(2),
+    startDate: todayIso(),
+    transport: 'car',
+    travelerCount: 2,
+    travelerNames: getDefaultTravelerNames(2)
+  });
+
+  const duration = Math.max(1, Number(form.duration || 1));
+  const costs = useMemo(
+    () =>
+      estimateTripCosts({
+        days: duration,
+        destinations: form.destinations,
+        routePlan,
+        transport: form.transport,
+        travelers: form.travelerCount
+      }),
+    [duration, form.destinations, form.transport, form.travelerCount, routePlan]
+  );
+
+  const requestPlanningLocation = () => {
+    if (!navigator.geolocation) {
+      setOriginStatus('Geolocation unavailable');
+      return;
+    }
+
+    setOriginStatus('Locating...');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setOrigin({
+          accuracy: position.coords.accuracy,
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          name: 'Current Location'
+        });
+        setOriginStatus(`Accuracy ${Math.round(position.coords.accuracy)} m`);
+      },
+      () => {
+        setOrigin(DEFAULT_ORIGIN);
+        setOriginStatus('Using Pune fallback');
+      },
+      { enableHighAccuracy: true, maximumAge: 60000, timeout: 10000 }
     );
   };
 
+  useEffect(() => {
+    requestPlanningLocation();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRoute() {
+      if (!form.destinations.length) {
+        setRoutePlan({ routeCoordinates: [], segments: [], source: 'direct', stops: [], totalDistanceKm: 0, totalDurationMin: 0 });
+        return;
+      }
+
+      setRouteLoading(true);
+      const nextRoutePlan = await fetchRoutePlan(origin, form.destinations, form.transport);
+
+      if (!cancelled) {
+        setRoutePlan(nextRoutePlan);
+        setSelectedPlaceId((current) => (nextRoutePlan.stops.some((stop) => String(stop.id) === String(current)) ? current : nextRoutePlan.stops[0]?.id || null));
+        setRouteLoading(false);
+      }
+    }
+
+    loadRoute();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [form.destinations, form.transport, origin.lat, origin.lng]);
+
+  const handleChange = (field, value) => {
+    setSavedTripId(null);
+    setForm((current) => {
+      const next = { ...current, [field]: value };
+
+      if (field === 'startDate' || field === 'endDate') {
+        const startDate = field === 'startDate' ? value : current.startDate;
+        const endDate = field === 'endDate' ? value : current.endDate;
+        if (!current.durationManual) {
+          next.duration = getTripDays(startDate, endDate);
+        }
+      }
+
+      if (field === 'duration') {
+        next.duration = Math.max(1, Number(value || 1));
+        next.durationManual = true;
+      }
+
+      return next;
+    });
+  };
+
+  const handleAddDestination = (value) => {
+    const trimmed = value.trim();
+
+    if (!trimmed || form.destinations.includes(trimmed)) {
+      return;
+    }
+
+    handleChange('destinations', [...form.destinations, trimmed]);
+    setDestinationInput('');
+  };
+
+  const handleRemoveDestination = (destination) => {
+    handleChange(
+      'destinations',
+      form.destinations.filter((item) => item !== destination)
+    );
+  };
+
+  const handleTravelerCountChange = (count) => {
+    const nextCount = Math.max(1, Number(count || 1));
+    setSavedTripId(null);
+    setForm((current) => {
+      const names = [...current.travelerNames];
+      while (names.length < nextCount) {
+        names.push(`Traveler ${names.length + 1}`);
+      }
+      return {
+        ...current,
+        travelerCount: nextCount,
+        travelerNames: names.slice(0, nextCount)
+      };
+    });
+  };
+
+  const handleTravelerNameChange = (index, value) => {
+    setSavedTripId(null);
+    setForm((current) => ({
+      ...current,
+      travelerNames: current.travelerNames.map((name, currentIndex) => (currentIndex === index ? value : name))
+    }));
+  };
+
+  const handleSavePlan = () => {
+    if (!form.destinations.length) {
+      toast.error('Add at least one destination before saving.');
+      return null;
+    }
+
+    const tripName = `${form.destinations[0]}${form.destinations.length > 1 ? ` + ${form.destinations.length - 1} stops` : ''}`;
+    const travelerNames = form.travelerNames.map((name, index) => name.trim() || `Traveler ${index + 1}`);
+    const trip = createTrip(tripName, travelerNames, {
+      budget: costs.total,
+      destinationDetails: routePlan.stops,
+      destinations: form.destinations,
+      duration,
+      endDate: form.endDate,
+      routeData: {
+        completedStopIds: [],
+        currentStopIndex: 0,
+        distanceKm: routePlan.totalDistanceKm,
+        etaMinutes: routePlan.totalDurationMin,
+        progress: 0,
+        routeCoordinates: routePlan.routeCoordinates,
+        segments: routePlan.segments,
+        source: routePlan.source
+      },
+      startDate: form.startDate,
+      transport: form.transport
+    });
+
+    writeTripsToStorage([trip, ...readTripsFromStorage()]);
+    setSavedTripId(trip.id);
+    toast.success('Plan saved to My Trips.');
+    return trip;
+  };
+
+  const handleStartTrip = () => {
+    const savedTrips = readTripsFromStorage();
+    const existingTrip = savedTripId ? savedTrips.find((trip) => trip.id === savedTripId) : null;
+    const tripToStart = existingTrip || handleSavePlan();
+
+    if (!tripToStart) {
+      return;
+    }
+
+    const currentTrips = readTripsFromStorage();
+    writeTripsToStorage(
+      currentTrips.map((trip) => (trip.id === tripToStart.id ? updateTripStatus(trip, TRIP_STATUSES.ONGOING) : trip))
+    );
+    navigate(`/trips/${tripToStart.id}`);
+  };
+
   return (
-    <div className="section-sm">
-      <div className="container">
-        <div className="container-sm">
-          <div className="section-eyebrow">Trip Planner</div>
-          <h1 className="section-title">Build your route like a polished checkout flow</h1>
-          <p className="section-sub">Create a multi-stop journey, pick transport, and get a smart trip plan with route context and cost signals.</p>
-        </div>
+    <div className="section-sm bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_52%,#f8fafc_100%)]">
+      <div className="container space-y-6">
+        <section className="rounded-3xl border border-white/80 bg-white/90 p-6 shadow-2xl shadow-slate-300/40 backdrop-blur sm:p-8">
+          <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.24em] text-teal-600">Trip Planner</p>
+              <h1 className="mt-3 text-4xl font-black text-slate-950 sm:text-5xl">Plan first. Manage live trips later.</h1>
+              <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600">
+                Choose destinations, dates, transport, route distance, ETA, weather, and budget. Live tracking and split expenses start only after the plan is saved and started from My Trips.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3 lg:w-[440px]">
+              <StepCard active label="Stops" meta="Selected" value={form.destinations.length} />
+              <StepCard active label="Duration" meta="Calculated" value={`${duration} day${duration === 1 ? '' : 's'}`} />
+              <StepCard active={!routeLoading} label="Route" meta={routeLoading ? 'Calculating' : routePlan.source.toUpperCase()} value={formatDistance(routePlan.totalDistanceKm)} />
+            </div>
+          </div>
+        </section>
 
-        <div className="container-sm mt-10">
-          <div className="card card-bordered p-6 sm:p-8">
-            <StepHeader currentStep={currentStep} />
+        <DestinationPicker
+          destinationInput={destinationInput}
+          destinations={form.destinations}
+          onAdd={handleAddDestination}
+          onInputChange={setDestinationInput}
+          onRemove={handleRemoveDestination}
+        />
 
-            <div className="min-h-[320px]">{renderCurrentStep()}</div>
+        <DateTransportPanel duration={duration} form={form} onChange={handleChange} routePlan={routePlan} />
 
-            <div className="mt-8 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                className="btn-outline"
-                disabled={currentStep === 0}
-                onClick={() => setCurrentStep((step) => Math.max(0, step - 1))}
-              >
-                Back
+        <TravelerDetails form={form} onTravelerCountChange={handleTravelerCountChange} onTravelerNameChange={handleTravelerNameChange} />
+
+        <CostWeatherPanel costs={costs} destinations={form.destinations} form={form} routePlan={routePlan} />
+
+        <RoutePreview
+          onLocateMe={requestPlanningLocation}
+          origin={origin}
+          originStatus={originStatus}
+          routePlan={routePlan}
+          selectedPlaceId={selectedPlaceId}
+          setSelectedPlaceId={setSelectedPlaceId}
+        />
+
+        <section className="rounded-3xl border border-white/80 bg-slate-950 p-6 text-white shadow-2xl shadow-slate-300/40">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-teal-300">Save plan</p>
+              <h2 className="mt-2 text-3xl font-black">Ready for My Trips</h2>
+              <p className="mt-2 text-sm font-semibold text-slate-300">Save to My Trips, or start immediately and open Manage Trip.</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button type="button" className="rounded-2xl bg-teal-500 px-5 py-3 text-sm font-black text-white shadow-xl transition hover:-translate-y-0.5" onClick={handleSavePlan}>
+                {savedTripId ? 'Trip Saved' : 'Save Trip'}
               </button>
-
-              {currentStep < STEPS.length - 1 ? (
-                <button type="button" className="btn-primary" onClick={() => setCurrentStep((step) => Math.min(STEPS.length - 1, step + 1))}>
-                  Continue
-                </button>
-              ) : (
-                <button type="button" className="btn-primary" onClick={handleSubmit} disabled={loading}>
-                  {loading ? 'Generating plan…' : 'Generate Trip'}
-                </button>
-              )}
+              <button type="button" className="rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-black text-white shadow-xl transition hover:-translate-y-0.5" onClick={handleStartTrip}>
+                Start Trip
+              </button>
+              <Link to="/trips" className="rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-950 shadow-xl transition hover:-translate-y-0.5">
+                Open My Trips
+              </Link>
             </div>
           </div>
-
-          {/* Cost Prediction Preview */}
-          <div className="mt-6">
-            <CostPrediction
-              travelers={totalTravelers}
-              destinations={form.destinations}
-              places={[]}
-            />
-          </div>
-        </div>
-
-        {tripResult ? (
-          <div className="mt-12 space-y-6">
-            <div className="overflow-hidden rounded-[var(--r-xl)] border border-[var(--c-border)] bg-white shadow-[var(--shadow-card)]">
-              <div className="h-[360px]">
-                <MapView center={mapCenter} routeCoordinates={routeCoordinates} zoom={routeCoordinates.length ? 10 : 5} />
-              </div>
-            </div>
-
-            <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-              <div className="card card-bordered p-6">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--c-text-secondary)]">Trip Summary</p>
-                    <h2 className="mt-2">Your itinerary</h2>
-                  </div>
-                  <div className="flex gap-3">
-                    <button type="button" className="btn-outline btn-sm">Download PDF</button>
-                    <button type="button" className="btn-primary btn-sm">Share Trip</button>
-                  </div>
-                </div>
-
-                <div className="mt-8 space-y-6">
-                  {summaryTimeline.map((item) => (
-                    <div key={`${item.day}-${item.title}`} className="flex gap-4">
-                      <div className="flex flex-col items-center">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--c-primary-light)] font-heading font-bold text-[var(--c-primary)]">
-                          {item.day}
-                        </span>
-                        <span className="mt-2 h-full w-px bg-[var(--c-border)]" />
-                      </div>
-                      <div className="pb-6">
-                        <span className="badge badge-orange">Day {item.day}</span>
-                        <p className="mt-2 font-semibold">{item.title}</p>
-                        <p className="text-sm text-[var(--c-text-secondary)]">Estimated arrival {item.time}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <CostPrediction
-                  travelers={totalTravelers}
-                  destinations={form.destinations}
-                  places={[]}
-                />
-
-                <div className="card card-bordered p-6">
-                  <h3>Plan details</h3>
-                  <div className="mt-4 space-y-3 text-sm text-[var(--c-text-secondary)]">
-                    <p>Destinations: {form.destinations.join(', ')}</p>
-                    <p>Date preference: {form.dates}</p>
-                    <p>Transport: {TRANSPORT_OPTIONS.find((item) => item.id === form.transportMode)?.title}</p>
-                    <p>Group size: {totalTravelers} travelers</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : null}
+        </section>
       </div>
     </div>
   );

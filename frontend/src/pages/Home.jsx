@@ -1,457 +1,195 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
+import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { getPlaces } from "../api/placeApi";
-import { extractArray as sharedExtractArray } from "../api/responseUtils";
 import QRScanner from "../components/qr/QRScanner";
-import { useLocationContext } from "../context/LocationContext";
 import { parsePlaceIdFromQr } from "../utils/qr";
 
 const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&q=90&w=3840";
+  "https://images.unsplash.com/photo-1742922016224-f4fb7f4387c5?auto=format&fit=crop&q=85&w=2400";
 
-const CATEGORY_PILLS = ["Monuments", "Nature", "Food", "Culture", "Beaches"];
+const fadeUp = {
+  hidden: { opacity: 0, y: 28 },
+  visible: { opacity: 1, y: 0 }
+};
 
-const CATEGORIES = [
+const FEATURES = [
   {
-    title: "Monuments",
-    image:
-      "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=600&auto=format&fit=crop&q=80",
+    icon: "AI",
+    title: "AI Voice Guide",
+    body: "Place-aware voice narration for forts, stories, and guided sections.",
+    accent: "from-teal-400 to-cyan-500"
   },
   {
-    title: "Nature",
-    image:
-      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=600&auto=format&fit=crop&q=80",
+    icon: "QR",
+    title: "QR Exploration",
+    body: "Scan a landmark QR and open the exact historical place page instantly.",
+    accent: "from-slate-900 to-slate-600"
   },
   {
-    title: "Food Tours",
-    image:
-      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&auto=format&fit=crop&q=80",
+    icon: "TP",
+    title: "Smart Trip Planner",
+    body: "Plan routes, organize destinations, and keep heritage visits structured.",
+    accent: "from-indigo-500 to-violet-500"
   },
   {
-    title: "AR Experiences",
-    image:
-      "https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=600&auto=format&fit=crop&q=80",
+    icon: "EX",
+    title: "Trip Expenses",
+    body: "Track shared spending inside each live trip and simplify group settlements.",
+    accent: "from-emerald-500 to-teal-500"
   },
   {
-    title: "Cultural Sites",
-    image:
-      "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=600&auto=format&fit=crop&q=80",
+    icon: "AR",
+    title: "AR Experience",
+    body: "Open immersive AR videos and visual experiences from place pages.",
+    accent: "from-amber-400 to-orange-500"
   },
   {
-    title: "Hidden Gems",
-    image:
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600&auto=format&fit=crop&q=80",
-  },
+    icon: "NP",
+    title: "Nearby Fort Discovery",
+    body: "Find nearby historical places around your current location.",
+    accent: "from-sky-500 to-blue-600"
+  }
 ];
 
-const COLLECTIONS = [
-  {
-    title: "Top UNESCO Sites",
-    count: "28 experiences",
-    image:
-      "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=600&auto=format&fit=crop&q=80",
-  },
-  {
-    title: "AR-Ready Monuments",
-    count: "14 immersive tours",
-    image:
-      "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=600&auto=format&fit=crop&q=80",
-  },
-  {
-    title: "Hidden Gems",
-    count: "36 local favorites",
-    image:
-      "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=600&auto=format&fit=crop&q=80",
-  },
-  {
-    title: "Budget-Friendly Tours",
-    count: "42 easy escapes",
-    image:
-      "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&auto=format&fit=crop&q=80",
-  },
-  {
-    title: "Family Adventures",
-    count: "19 all-ages routes",
-    image:
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&auto=format&fit=crop&q=80",
-  },
-];
-
-const FEATURE_ROWS = [
-  {
-    badge: "AUGMENTED REALITY",
-    title: "Step Inside History",
-    body: "Bring ruins, plazas, forts, and galleries to life with scene-aware overlays that tell richer stories the moment you arrive.",
-    cta: "Try AR Tour",
-    image:
-      "https://images.unsplash.com/photo-1562774053-701939374585?w=800&auto=format&fit=crop",
-    bullets: [
-      "3D reconstructions over real landmarks",
-      "Guided camera checkpoints",
-      "Captions and narration in sync",
-    ],
-  },
-  {
-    badge: "AI GUIDE",
-    title: "Your Personal Historian",
-    body: "Ask follow-up questions, unlock place-specific narration, and get smart recommendations that adapt to where you are and what you like.",
-    cta: "Meet Your AI Guide",
-    image:
-      "https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=800&auto=format&fit=crop",
-    bullets: [
-      "Location-aware storytelling",
-      "Multilingual support",
-      "Contextual nearby suggestions",
-    ],
-  },
-  {
-    badge: "SMART PLANNING",
-    title: "One App, Entire Journey",
-    body: "Plan routes, coordinate group travel, estimate costs, and keep every landmark, booking, and memory flowing together in one timeline.",
-    cta: "Plan a Trip",
-    image:
-      "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&auto=format&fit=crop",
-    bullets: [
-      "Collaborative itinerary planning",
-      "Weather and road alerts",
-      "Shared budgets and travel stories",
-    ],
-  },
-];
-
-const REVIEW_CARDS = [
-  {
-    name: "Aditi",
-    region: "India",
-    date: "March 2026",
-    title: "Best city guide we used this year",
-    text: "The AR layer at the fort completely changed the experience. We understood the place in minutes and the route suggestions were spot on.",
-    place: "Amber Fort",
-  },
-  {
-    name: "Luca",
-    region: "Italy",
-    date: "February 2026",
-    title: "Felt like a local companion",
-    text: "The app balanced maps, narration, and discovery really well. It was clean, fast, and surprisingly helpful when we changed plans.",
-    place: "Jaipur Old City",
-  },
-  {
-    name: "Maya",
-    region: "United States",
-    date: "January 2026",
-    title: "Loved the stress-free planning",
-    text: "We used TourVision for places, route planning, and trip splitting. Everything felt polished and easy to trust.",
-    place: "Gateway of India",
-  },
-];
-
-const FALLBACK_PLACES = [
+const POPULAR_FORTS = [
   {
     id: "rajgad",
-    name: "Rajgad Fort",
-    location_name: "Pune, Maharashtra",
-    category: "Historic Fort",
-    distance: 18.5,
-    rating: 4.7,
-    review_count: 3200,
-    price: 0,
-    free_entry: true,
-    has_ar: true,
+    name: "Rajgad",
+    location: "Pune, Maharashtra",
     image: "/images/rajgad-fort.jpg",
-    score: 9.2,
+    body: "A Maratha capital fort with AI narration, guided sections, and AR-ready exploration."
   },
   {
-    id: 1,
-    name: "Amber Fort",
-    location_name: "Jaipur, India",
-    category: "Historic Fort",
-    distance: 2.1,
-    rating: 4.9,
-    review_count: 2341,
-    price: 0,
-    free_entry: true,
-    has_ar: true,
-    image:
-      "https://images.unsplash.com/photo-1477587458883-47145ed94245?w=900&auto=format&fit=crop&q=80",
-    score: 9.1,
+    id: "sinhagad",
+    name: "Sinhagad",
+    location: "Pune, Maharashtra",
+    image: "https://commons.wikimedia.org/wiki/Special:FilePath/Sinhagad.jpg?width=900",
+    body: "A dramatic hill fort near Pune for nearby discovery, route planning, and guided visits."
   },
   {
-    id: 2,
-    name: "Marine Drive",
-    location_name: "Mumbai, India",
-    category: "Waterfront",
-    distance: 3.4,
-    rating: 4.8,
-    review_count: 1820,
-    price: 250,
-    free_entry: false,
-    has_ar: false,
-    image:
-      "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=900&auto=format&fit=crop&q=80",
-    score: 8.9,
-  },
-  {
-    id: 3,
-    name: "Humayun Tomb",
-    location_name: "Delhi, India",
-    category: "UNESCO Site",
-    distance: 5.3,
-    rating: 4.9,
-    review_count: 3011,
-    price: 300,
-    free_entry: false,
-    has_ar: true,
-    image:
-      "https://images.unsplash.com/photo-1587474260584-136574528ed5?w=900&auto=format&fit=crop&q=80",
-    score: 9.4,
-  },
-  {
-    id: 4,
-    name: "Sunset Cliffs",
-    location_name: "Goa, India",
-    category: "Nature Escape",
-    distance: 1.8,
-    rating: 4.7,
-    review_count: 954,
-    price: 0,
-    free_entry: true,
-    has_ar: false,
-    image:
-      "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop&q=80",
-    score: 8.8,
-  },
+    id: "shaniwar-wada",
+    name: "Shaniwar Wada",
+    location: "Pune, Maharashtra",
+    image: "https://commons.wikimedia.org/wiki/Special:FilePath/Shaniwar_Wada_Pune.jpg?width=900",
+    body: "A city heritage landmark built for short exploration flows, QR scans, and AI context."
+  }
 ];
 
-const RAJGAD_TRENDING_PLACE = FALLBACK_PLACES[0];
-
-const REGION_FILTERS = [
-  "All",
-  "India",
-  "Europe",
-  "Asia",
-  "Americas",
-  "Middle East",
+const WORKFLOW = [
+  { label: "Scan QR", icon: "01" },
+  { label: "Open Place", icon: "02" },
+  { label: "Listen to AI Guide", icon: "03" },
+  { label: "Explore Sections", icon: "04" },
+  { label: "Plan Trip", icon: "05" }
 ];
 
-function normalizePlace(place, index) {
-  return {
-    id: place.id || index + 1,
-    name: place.name || place.title || `Place ${index + 1}`,
-    location_name:
-      place.location_name || place.city || "TourVision destination",
-    category: place.category || place.type || "Experience",
-    distance: Number(place.distance || 0),
-    rating: Number(place.rating || 4.8),
-    review_count: place.review_count || place.reviews || 1200 + index * 117,
-    price: Number(place.price || place.entry_fee || 0),
-    free_entry: Number(place.price || place.entry_fee || 0) === 0,
-    has_ar: Boolean(place.has_ar || place.ar_model_url),
-    image:
-      place.image ||
-      place.images?.[0] ||
-      FALLBACK_PLACES[index % FALLBACK_PLACES.length].image,
-    score: Number(place.score || 8.7 + (index % 5) * 0.2).toFixed(1),
-    region:
-      place.region || place.country || (index % 2 === 0 ? "India" : "Asia"),
-  };
-}
+const FLOATING_CARDS = [
+  { title: "AI Guide", meta: "Voice stories on demand", className: "left-4 top-8 sm:left-auto sm:right-8 sm:top-20" },
+  { title: "QR Scan", meta: "Instant place unlock", className: "right-4 top-32 sm:right-24 sm:top-56" },
+  { title: "Trip Planner", meta: "Routes, costs, groups", className: "bottom-8 left-4 sm:left-auto sm:right-12" }
+];
 
-function ensureRajgadPlace(places) {
-  const hasRajgad = places.some((place) => String(place.id).toLowerCase() === "rajgad");
-  return hasRajgad ? places : [RAJGAD_TRENDING_PLACE, ...places];
-}
-
-// Safe helper — handles every possible API response shape
-function extractArray(response) {
-  if (!response) return [];
-  if (Array.isArray(response)) return response;
-  const d = response.data ?? response;
-  if (Array.isArray(d)) return d;
-  if (d && Array.isArray(d.places)) return d.places;
-  if (d && Array.isArray(d.results)) return d.results;
-  if (d && Array.isArray(d.items)) return d.items;
-  if (d && Array.isArray(d.data)) return d.data;
-  console.warn("extractArray: unexpected shape", response);
-  return [];
-}
-
-function ListingCard({ onOpen, onToggleSave, place, saved = false }) {
+function FeatureCard({ feature, index }) {
   return (
-    <article
-      className="group cursor-pointer overflow-hidden rounded-2xl bg-white shadow-md shadow-slate-200/70 ring-1 ring-slate-200/70 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-xl hover:shadow-slate-300/50"
-      onClick={() => onOpen(place)}
+    <motion.article
+      className="group relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-200/70 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-300/50"
+      variants={fadeUp}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.25 }}
+      transition={{ duration: 0.55, delay: index * 0.05 }}
     >
-      <div className="relative aspect-[20/19] overflow-hidden bg-[var(--c-surface-inset)]">
-        <img
-          alt={place.name}
-          className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-110"
-          src={place.image}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleSave(place.id);
-          }}
-          className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-2xl text-white shadow-lg backdrop-blur-md ring-1 ring-white/30 transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/30 active:scale-95"
-          aria-label="Save place"
-        >
-          {saved ? "♥" : "♡"}
-        </button>
-        <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
-          <div className="mb-3 flex flex-wrap gap-2">
-            <span className="rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] backdrop-blur-md">
-              {place.category}
-            </span>
-            {place.has_ar && (
-              <span className="rounded-full bg-teal-400/90 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-950">
-                AR
-              </span>
-            )}
-          </div>
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <h3 className="font-heading text-xl font-extrabold leading-tight text-white">
-                {place.name}
-              </h3>
-              <p className="mt-1 text-sm font-medium text-white/80">
-                {place.location_name}
-              </p>
-            </div>
-            <span className="rounded-xl bg-white px-3 py-1.5 font-heading text-sm font-extrabold text-slate-950 shadow-lg">
-              {place.score}
-            </span>
-          </div>
-        </div>
+      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${feature.accent}`} />
+      <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${feature.accent} text-sm font-black text-white shadow-lg shadow-slate-300/70`}>
+        {feature.icon}
       </div>
-
-      <div className="p-5">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <span className="badge badge-neutral">
-            {place.distance ? `${place.distance.toFixed(1)} km` : "Nearby"}
-          </span>
-          <span className="text-xs font-bold uppercase tracking-[0.08em] text-teal-700">
-            {place.free_entry ? "Free entry" : "Premium"}
-          </span>
-        </div>
-        <div className="hidden">
-          <h3 className="font-heading text-[1rem] font-semibold leading-6">
-            {place.name}
-          </h3>
-          <span className="score-bubble">{place.score}</span>
-        </div>
-
-        <div className="hidden">
-          <span>{place.location_name}</span>
-          <span className="badge badge-neutral">
-            {place.distance ? `${place.distance.toFixed(1)} km` : "Nearby"}
-          </span>
-        </div>
-
-        <div className="hidden">
-          <span className="badge badge-neutral">{place.category}</span>
-          {place.has_ar && (
-            <span className="badge badge-teal">AR Available</span>
-          )}
-        </div>
-
-        <div className="mt-0 flex items-center justify-between gap-3 text-[13px] text-[var(--c-text-secondary)]">
-          ★ {place.rating.toFixed(1)} ·{" "}
-          {Number(place.review_count).toLocaleString()} reviews
-        </div>
-
-        <div className="mt-2 font-semibold text-[var(--c-text-primary)]">
-          {place.free_entry
-            ? "From Rs 0 · Free Entry"
-            : `Rs ${place.price} / person`}
-        </div>
-      </div>
-    </article>
+      <h3 className="mt-6 text-xl font-extrabold text-slate-950">{feature.title}</h3>
+      <p className="mt-3 text-sm leading-6 text-slate-600">{feature.body}</p>
+      <div className="mt-6 h-px bg-gradient-to-r from-slate-200 via-slate-100 to-transparent" />
+      <p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Implemented</p>
+    </motion.article>
   );
 }
 
-ListingCard.propTypes = {
-  onOpen: PropTypes.func.isRequired,
-  onToggleSave: PropTypes.func.isRequired,
-  place: PropTypes.shape({
-    category: PropTypes.string,
-    distance: PropTypes.number,
-    free_entry: PropTypes.bool,
-    has_ar: PropTypes.bool,
-    id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
-    image: PropTypes.string.isRequired,
-    location_name: PropTypes.string,
-    name: PropTypes.string.isRequired,
-    price: PropTypes.number,
-    rating: PropTypes.number.isRequired,
-    review_count: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    score: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
+FeatureCard.propTypes = {
+  feature: PropTypes.shape({
+    accent: PropTypes.string.isRequired,
+    body: PropTypes.string.isRequired,
+    icon: PropTypes.string.isRequired,
+    title: PropTypes.string.isRequired
   }).isRequired,
-  saved: PropTypes.bool,
+  index: PropTypes.number.isRequired
+};
+
+function DestinationCard({ fort, onAiGuide, onExplore }) {
+  return (
+    <motion.article
+      className="group overflow-hidden rounded-3xl bg-white shadow-xl shadow-slate-200/80 ring-1 ring-slate-200/80 transition duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-slate-300/70"
+      variants={fadeUp}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: 0.6 }}
+    >
+      <div className="relative h-72 overflow-hidden bg-slate-200">
+        <img
+          alt={fort.name}
+          className="h-full w-full object-cover transition duration-700 group-hover:scale-110"
+          loading="lazy"
+          src={fort.image}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/25 to-transparent" />
+        <div className="absolute bottom-5 left-5 right-5 text-white">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/70">{fort.location}</p>
+          <h3 className="mt-2 text-3xl font-black leading-none drop-shadow-xl">{fort.name}</h3>
+        </div>
+      </div>
+      <div className="p-6">
+        <p className="min-h-16 text-sm leading-6 text-slate-600">{fort.body}</p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <button
+            type="button"
+            className="rounded-full bg-slate-950 px-5 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-slate-300/80 transition duration-300 hover:-translate-y-0.5 hover:bg-teal-700 active:scale-95"
+            onClick={() => onAiGuide(fort)}
+          >
+            AI Guide
+          </button>
+          <button
+            type="button"
+            className="rounded-full border border-slate-200 px-5 py-2.5 text-sm font-extrabold text-slate-700 transition duration-300 hover:-translate-y-0.5 hover:border-teal-200 hover:bg-teal-50 hover:text-teal-800 active:scale-95"
+            onClick={() => onExplore(fort)}
+          >
+            Explore
+          </button>
+        </div>
+      </div>
+    </motion.article>
+  );
+}
+
+DestinationCard.propTypes = {
+  fort: PropTypes.shape({
+    body: PropTypes.string.isRequired,
+    id: PropTypes.string.isRequired,
+    image: PropTypes.string.isRequired,
+    location: PropTypes.string.isRequired,
+    name: PropTypes.string.isRequired
+  }).isRequired,
+  onAiGuide: PropTypes.func.isRequired,
+  onExplore: PropTypes.func.isRequired
 };
 
 export default function Home() {
   const navigate = useNavigate();
-  const { location } = useLocationContext();
-
-  const [trendingPlaces, setTrendingPlaces] = useState(FALLBACK_PLACES);
-  const [loading, setLoading] = useState(false);
-  const [activeRegion, setActiveRegion] = useState("All");
-  const [savedIds, setSavedIds] = useState([]);
-  const [search, setSearch] = useState({
-    destination: "",
-    date: "",
-    travelers: "Any travelers",
-  });
   const [scannerOpen, setScannerOpen] = useState(false);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const loadTrending = async () => {
-      if (!location) return;
-      setLoading(true);
-      try {
-        const response = await getPlaces({
-          lat: location.lat,
-          lng: location.lng,
-          radius: 20,
-        });
-        const list = sharedExtractArray(response);
-        const normalized = list.map(normalizePlace);
-        if (isMounted && normalized.length) {
-          setTrendingPlaces(ensureRajgadPlace(normalized));
-        }
-      } catch (error) {
-        if (isMounted) {
-          console.warn("Trending places fallback engaged.", error);
-          // FALLBACK_PLACES already set as initial state — nothing else needed
-        }
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    loadTrending();
-    return () => {
-      isMounted = false;
-    };
-  }, [location]);
-
-  const filteredPlaces = useMemo(() => {
-    if (activeRegion === "All") return trendingPlaces;
-    return trendingPlaces.filter((p) =>
-      `${p.region} ${p.location_name}`
-        .toLowerCase()
-        .includes(activeRegion.toLowerCase()),
-    );
-  }, [activeRegion, trendingPlaces]);
-
-  const handleSearchSubmit = () => navigate("/nearby");
+    const openScanner = () => setScannerOpen(true);
+    window.addEventListener("tourvision:open-qr", openScanner);
+    return () => window.removeEventListener("tourvision:open-qr", openScanner);
+  }, []);
 
   const handleQrDetected = async (decodedText) => {
     const placeId = parsePlaceIdFromQr(decodedText);
@@ -466,468 +204,195 @@ export default function Home() {
     navigate(`/place/${placeId}`);
   };
 
+  const openPlace = (fort) => {
+    navigate(`/place/${fort.id}`);
+  };
+
+  const startGuide = (fort) => {
+    navigate(`/place/${fort.id}`);
+    window.setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent("tourvision:start-ai-guide", {
+          detail: { placeId: fort.id }
+        })
+      );
+    }, 600);
+  };
+
   return (
     <>
-      {/* ── HERO ── */}
-      <section className="relative flex min-h-[92svh] items-end overflow-hidden bg-emerald-950">
-        <img
-          alt="Foggy monsoon mountains inspired by Rajgad Fort"
-          className="absolute inset-0 h-full w-full scale-105 object-cover saturate-[1.12] contrast-[1.06] hue-rotate-[12deg] transition-transform duration-700"
+      <section className="relative min-h-[calc(100svh-4rem)] overflow-hidden bg-slate-950">
+        <motion.img
+          alt="Rajgad Fort in Maharashtra"
+          animate={{ scale: [1.04, 1.09, 1.04], y: [0, -12, 0] }}
+          className="absolute inset-0 h-full w-full object-cover opacity-85"
+          fetchPriority="high"
           src={HERO_IMAGE}
+          transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
         />
-        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.2)_0%,rgba(0,0,0,0.6)_60%,rgba(0,0,0,0.8)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_28%,rgba(34,197,94,0.28),transparent_28%),radial-gradient(circle_at_72%_12%,rgba(13,148,136,0.18),transparent_26%),linear-gradient(120deg,rgba(6,78,59,0.38),transparent_52%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-emerald-950/80 to-transparent" />
-        <div className="container relative z-10 w-full pb-[96px] pt-24">
-          <div className="max-w-[760px] animate-[fadeUp_0.7s_var(--ease-out)_both]">
-            <div className="mb-5 inline-flex rounded-full border border-white/25 bg-white/20 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-black/20 backdrop-blur-md transition-all duration-300 hover:scale-[1.05] hover:bg-white/25 hover:shadow-xl">
-              Hi Rahul 👋
-            </div>
-            <p className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-emerald-300 drop-shadow">
-              Explore near your location
-            </p>
-            {/* Category pills */}
-            <div className="filter-chips mb-6">
-              {CATEGORY_PILLS.map((pill) => (
-                <span
-                  key={pill}
-                  className="rounded-full border border-white/25 bg-white/15 px-4 py-2 text-[13px] font-semibold text-white shadow-black/20 backdrop-blur-md transition-all duration-300 hover:scale-[1.05] hover:border-emerald-200/70 hover:bg-white/25 hover:shadow-xl hover:shadow-emerald-500/20"
-                >
-                  {pill}
-                </span>
-              ))}
-            </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/70 to-slate-950/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/15" />
 
-            <h1 className="max-w-[780px] animate-[fadeUp_0.8s_var(--ease-out)_0.08s_both] text-6xl font-extrabold leading-tight text-white drop-shadow-[0_10px_34px_rgba(0,0,0,0.65)] sm:text-7xl lg:text-8xl">
-              Explore the World&apos;s Most
-              <br />
-              Incredible Places
+        <div className="container relative z-10 grid min-h-[calc(100svh-4rem)] items-center gap-10 py-16 lg:grid-cols-[minmax(0,0.62fr)_minmax(340px,0.38fr)]">
+          <motion.div
+            className="max-w-4xl pt-8 text-white"
+            initial={{ opacity: 0, y: 34 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <span className="inline-flex rounded-full border border-white/20 bg-white/15 px-4 py-2 text-sm font-bold shadow-xl shadow-black/20 backdrop-blur-md">
+              AI-powered heritage exploration
+            </span>
+            <h1 className="mt-7 max-w-3xl text-5xl font-black leading-[0.98] tracking-tight drop-shadow-2xl sm:text-6xl lg:text-8xl">
+              Explore History with AI
             </h1>
-            <p className="mt-5 max-w-[620px] text-lg font-medium text-white/85 drop-shadow md:text-xl">
-              AI-powered tours, AR experiences, and smart trip planning
+            <p className="mt-6 max-w-2xl text-lg font-medium leading-8 text-white/82 sm:text-xl">
+              Scan QR codes, listen to AI voice guides, explore forts, and plan smarter journeys.
             </p>
-
-            {/* Search bar */}
-            <div className="mt-9 overflow-hidden rounded-2xl border border-white/30 bg-white/20 p-2 shadow-xl shadow-black/35 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] hover:border-emerald-200/60 hover:bg-white/25 hover:shadow-2xl hover:shadow-emerald-950/30">
-              <div className="grid gap-2 md:grid-cols-[1.2fr_0.8fr_0.8fr_auto]">
-                <label className="input-wrap rounded-2xl border border-white/20 bg-white/85 px-4 py-3 shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-lg focus-within:ring-2 focus-within:ring-emerald-300/80">
-                  <span className="input-label text-emerald-700">Destination</span>
-                  <input
-                    className="border-none bg-transparent p-0 text-[15px] text-slate-950 shadow-none outline-none placeholder:text-slate-400 focus:shadow-none"
-                    placeholder="Search destinations"
-                    value={search.destination}
-                    onChange={(e) =>
-                      setSearch((s) => ({ ...s, destination: e.target.value }))
-                    }
-                  />
-                </label>
-
-                <label className="input-wrap rounded-2xl border border-white/20 bg-white/85 px-4 py-3 shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-lg focus-within:ring-2 focus-within:ring-emerald-300/80">
-                  <span className="input-label text-emerald-700">Date</span>
-                  <input
-                    type="date"
-                    className="border-none bg-transparent p-0 text-[15px] text-slate-950 shadow-none outline-none focus:shadow-none"
-                    value={search.date}
-                    onChange={(e) =>
-                      setSearch((s) => ({ ...s, date: e.target.value }))
-                    }
-                  />
-                </label>
-
-                <label className="input-wrap rounded-2xl border border-white/20 bg-white/85 px-4 py-3 shadow-sm backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-lg focus-within:ring-2 focus-within:ring-emerald-300/80">
-                  <span className="input-label text-emerald-700">Travelers</span>
-                  <select
-                    className="border-none bg-transparent p-0 text-[15px] text-slate-950 shadow-none outline-none focus:shadow-none"
-                    value={search.travelers}
-                    onChange={(e) =>
-                      setSearch((s) => ({ ...s, travelers: e.target.value }))
-                    }
-                  >
-                    <option>Any travelers</option>
-                    <option>Solo</option>
-                    <option>Couple</option>
-                    <option>Family</option>
-                    <option>Group</option>
-                  </select>
-                </label>
-
-                <button
-                  type="button"
-                  className="rounded-2xl bg-gradient-to-r from-teal-600 via-emerald-600 to-indigo-600 px-8 py-4 font-heading text-base font-extrabold text-white shadow-lg shadow-emerald-950/30 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.05] hover:shadow-xl hover:shadow-emerald-500/25 active:scale-95"
-                  onClick={handleSearchSubmit}
-                >
-                  Search
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-9 flex flex-wrap gap-3">
               <button
                 type="button"
-                className="rounded-full border border-white/30 bg-white/15 px-5 py-2.5 text-sm font-bold text-white shadow-lg backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/25 active:scale-95"
+                className="rounded-full bg-white px-7 py-3.5 text-sm font-extrabold text-slate-950 shadow-2xl shadow-black/25 transition duration-300 hover:-translate-y-1 hover:scale-[1.03] active:scale-95"
+                onClick={() => navigate("/nearby")}
+              >
+                Start Exploring
+              </button>
+              <button
+                type="button"
+                className="rounded-full border border-white/30 bg-white/15 px-7 py-3.5 text-sm font-extrabold text-white shadow-2xl shadow-black/20 backdrop-blur-md transition duration-300 hover:-translate-y-1 hover:scale-[1.03] hover:bg-white/25 active:scale-95"
                 onClick={() => setScannerOpen(true)}
               >
-                Scan QR Code
-              </button>
-              <button
-                type="button"
-                className="rounded-full border border-white/30 bg-white/15 px-5 py-2.5 text-sm font-bold text-white shadow-lg backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/25 active:scale-95"
-                onClick={() => navigate("/trip-planner")}
-              >
-                Start planning
+                Scan QR
               </button>
             </div>
-          </div>
-        </div>
-      </section>
+          </motion.div>
 
-      {/* ── TRUST BAR ── */}
-      <div className="trust-bar shadow-sm">
-        <div className="trust-item">
-          <span className="trust-item-icon">✓</span>Free Cancellation
-        </div>
-        <div className="trust-item">
-          <span className="trust-item-icon">📍</span>500+ Destinations
-        </div>
-        <div className="trust-item">
-          <span className="trust-item-icon">★</span>4.9/5 Rating
-        </div>
-        <div className="trust-item">
-          <span className="trust-item-icon">🤖</span>AI-Powered Guides
-        </div>
-      </div>
-
-      {/* ── CATEGORIES ── */}
-      <section className="bg-white py-20">
-        <div className="container">
-          <div className="section-eyebrow">Things To Do</div>
-          <h2 className="section-title">What do you want to explore?</h2>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
-            {CATEGORIES.map((cat) => (
-              <article
-                key={cat.title}
-                className="group relative h-44 cursor-pointer overflow-hidden rounded-2xl shadow-lg shadow-slate-200/70 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-xl"
+          <div className="relative hidden min-h-[460px] lg:block">
+            {FLOATING_CARDS.map((card, index) => (
+              <motion.div
+                key={card.title}
+                className={`absolute w-64 rounded-3xl border border-white/20 bg-white/15 p-5 text-white shadow-2xl shadow-black/30 backdrop-blur-xl ${card.className}`}
+                initial={{ opacity: 0, y: 28 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.25 + index * 0.14 }}
+                whileHover={{ y: -6, scale: 1.03 }}
               >
-                <img
-                  alt={cat.title}
-                  className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
-                  src={cat.image}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-                <p className="absolute bottom-4 left-4 font-heading text-lg font-bold text-white">
-                  {cat.title}
-                </p>
-              </article>
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-sm font-black text-slate-950">
+                  {card.title.split(" ")[0].slice(0, 2).toUpperCase()}
+                </div>
+                <h3 className="mt-4 text-lg font-extrabold">{card.title}</h3>
+                <p className="mt-1 text-sm text-white/70">{card.meta}</p>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── TRENDING PLACES ── */}
-      <section className="bg-slate-50 py-20">
+      <motion.section
+        className="bg-gradient-to-b from-slate-50 to-white py-16 sm:py-20"
+        variants={fadeUp}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
+        transition={{ duration: 0.65 }}
+      >
         <div className="container">
-          <div className="flex items-end justify-between gap-4">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-teal-700">Actual product features</p>
+            <h2 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">
+              Built for intelligent travel exploration.
+            </h2>
+            <p className="mt-4 text-base leading-7 text-slate-600">
+              The homepage now highlights the core app flows: QR discovery, AI narration, nearby places, trip planning, live expenses, and AR experiences.
+            </p>
+          </div>
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {FEATURES.map((feature, index) => (
+              <FeatureCard key={feature.title} feature={feature} index={index} />
+            ))}
+          </div>
+        </div>
+      </motion.section>
+
+      <section className="bg-white py-16 sm:py-20">
+        <div className="container">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="section-eyebrow">Discover</div>
-              <h2 className="section-title">Trending right now</h2>
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-teal-700">Popular destinations</p>
+              <h2 className="mt-4 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">Explore forts with guided context.</h2>
             </div>
             <button
               type="button"
-              className="rounded-full px-4 py-2 text-sm font-bold text-teal-700 transition-all duration-300 hover:bg-teal-50 hover:text-indigo-700 active:scale-95"
+              className="w-fit rounded-full bg-slate-100 px-5 py-2.5 text-sm font-extrabold text-slate-700 transition hover:-translate-y-0.5 hover:bg-teal-50 hover:text-teal-800"
               onClick={() => navigate("/nearby")}
             >
-              Show all →
+              View nearby places
             </button>
           </div>
-
-          {/* Region filter chips */}
-          <div className="filter-chips mt-5">
-            {REGION_FILTERS.map((region) => (
-              <button
-                key={region}
-                type="button"
-                className={`chip ${activeRegion === region ? "active" : ""}`}
-                onClick={() => setActiveRegion(region)}
-              >
-                {region}
-              </button>
+          <div className="mt-10 grid gap-6 lg:grid-cols-3">
+            {POPULAR_FORTS.map((fort) => (
+              <DestinationCard key={fort.id} fort={fort} onAiGuide={startGuide} onExplore={openPlace} />
             ))}
           </div>
-
-          {/* Cards grid */}
-          {loading ? (
-            <div className="mt-6 grid gap-8 sm:grid-cols-2 xl:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={`sk-${i}`} className="space-y-3">
-                  <div className="skeleton aspect-[20/19] rounded-[var(--r-lg)]" />
-                  <div className="skeleton h-4 w-4/5" />
-                  <div className="skeleton h-4 w-3/5" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-6 grid gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-4">
-              {filteredPlaces.slice(0, 8).map((place) => (
-                <ListingCard
-                  key={place.id}
-                  place={place}
-                  saved={savedIds.includes(place.id)}
-                  onOpen={(p) => navigate(`/place/${p.id}`)}
-                  onToggleSave={(id) =>
-                    setSavedIds((s) =>
-                      s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
-                    )
-                  }
-                />
-              ))}
-            </div>
-          )}
         </div>
       </section>
 
-      {/* ── COLLECTIONS ── */}
-      <section className="bg-white py-20">
+      <section className="relative overflow-hidden bg-slate-950 py-16 text-white sm:py-20">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal-300/60 to-transparent" />
         <div className="container">
-          <div className="section-eyebrow">Collections</div>
-          <h2 className="section-title">Curated Experiences</h2>
-          <div className="scroll-row mt-6">
-            {COLLECTIONS.map((col) => (
-              <article
-                key={col.title}
-                className="card card-bordered min-w-[260px] max-w-[260px] cursor-pointer p-4 shadow-md shadow-slate-200/60 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-xl"
+          <div className="max-w-3xl">
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-teal-300">QR plus AI experience flow</p>
+            <h2 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">From scan to story to smart plan.</h2>
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-5">
+            {WORKFLOW.map((step, index) => (
+              <motion.div
+                key={step.label}
+                className="relative rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl shadow-black/10 backdrop-blur-md"
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.3 }}
+                transition={{ duration: 0.5, delay: index * 0.08 }}
               >
-                <div className="flex gap-4">
-                  <img
-                    alt={col.title}
-                    className="h-[120px] w-[120px] rounded-2xl object-cover"
-                    src={col.image}
-                  />
-                  <div className="flex flex-1 flex-col justify-between">
-                    <div>
-                      <h3 className="text-base">{col.title}</h3>
-                      <p className="mt-2 text-sm text-[var(--c-text-secondary)]">
-                        {col.count}
-                      </p>
-                    </div>
-                    <p className="text-sm font-semibold text-[var(--c-primary)]">
-                      Explore →
-                    </p>
-                  </div>
-                </div>
-              </article>
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-sm font-black text-slate-950">
+                  {step.icon}
+                </span>
+                <p className="mt-5 font-extrabold">{step.label}</p>
+                {index < WORKFLOW.length - 1 ? (
+                  <span className="absolute -right-3 top-9 hidden h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-slate-900 text-white/60 md:flex">
+                    -&gt;
+                  </span>
+                ) : null}
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── FEATURE ROWS ── */}
-      <section className="bg-slate-50 py-20">
-        <div className="container space-y-12">
-          {FEATURE_ROWS.map((feature, index) => (
-            <div
-              key={feature.title}
-              className={`grid items-center gap-8 lg:grid-cols-2 ${
-                index % 2 === 1 ? "lg:[&>div:first-child]:order-2" : ""
-              }`}
-            >
-              <div className="overflow-hidden rounded-3xl shadow-xl shadow-slate-300/50">
-                <img
-                  alt={feature.title}
-                  className="h-[420px] w-full object-cover transition-all duration-500 hover:scale-[1.03]"
-                  src={feature.image}
-                />
-              </div>
+      <section className="bg-white py-14">
+        <div className="container">
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-teal-50 via-white to-indigo-50 p-7 shadow-xl shadow-slate-200/70 sm:p-9">
+            <div className="grid gap-7 md:grid-cols-[1fr_auto] md:items-center">
               <div>
-                <span className="badge badge-orange">{feature.badge}</span>
-                <h2 className="mt-4">{feature.title}</h2>
-                <p className="mt-4 max-w-[520px] text-[var(--c-text-secondary)]">
-                  {feature.body}
+                <p className="text-sm font-black uppercase tracking-[0.18em] text-teal-700">Plan, travel, settle</p>
+                <h2 className="mt-3 text-3xl font-black text-slate-950">Turn exploration into a complete trip.</h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+                  Move from guided place sections to trip planning, live navigation, and trip-scoped expense tracking.
                 </p>
-                <ul className="mt-5 space-y-3">
-                  {feature.bullets.map((bullet) => (
-                    <li key={bullet} className="flex items-start gap-3 text-sm">
-                      <span className="mt-1 text-[var(--c-success)]">✓</span>
-                      <span>{bullet}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button type="button" className="btn-primary mt-6">
-                  {feature.cta}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button type="button" className="btn-primary" onClick={() => navigate("/trip-planner")}>
+                  Open Trip Planner
+                </button>
+                <button type="button" className="btn-secondary" onClick={() => navigate("/trips")}>
+                  My Trips
                 </button>
               </div>
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── REVIEWS ── */}
-      <section className="bg-white py-20">
-        <div className="container">
-          <div className="text-center">
-            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-teal-500 to-indigo-600 font-heading text-4xl font-extrabold text-white shadow-xl shadow-teal-500/25">
-              9.2
-            </div>
-            <p className="mt-5 text-2xl font-bold">Exceptional</p>
-            <p className="mt-2 text-[var(--c-text-secondary)]">
-              based on 50,000+ traveler reviews
-            </p>
-          </div>
-
-          <div className="mt-10 grid gap-5 lg:grid-cols-3">
-            {REVIEW_CARDS.map((review) => (
-              <article
-                key={review.name}
-                className="card card-bordered p-6 shadow-md shadow-slate-200/60 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.03] hover:shadow-xl"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-semibold">
-                      {review.name} · {review.region}
-                    </p>
-                    <p className="text-sm text-[var(--c-text-secondary)]">
-                      {review.date}
-                    </p>
-                  </div>
-                  <span className="score-bubble">9.0</span>
-                </div>
-                <h3 className="mt-5 text-lg">{review.title}</h3>
-                <p className="mt-3 text-[var(--c-text-secondary)]">
-                  {review.text}
-                </p>
-                <p className="mt-4 text-sm font-semibold text-[var(--c-primary)]">
-                  Reviewed {review.place}
-                </p>
-              </article>
-            ))}
           </div>
         </div>
       </section>
 
-      {/* ── APP DOWNLOAD CTA ── */}
-      <section className="bg-slate-50 py-20">
-        <div className="container">
-          <div className="overflow-hidden rounded-[32px] bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-6 py-10 text-white shadow-2xl shadow-slate-300/60 md:px-10">
-            <div className="grid items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-              <div>
-                <span className="badge badge-amber">App Download</span>
-                <h2 className="mt-4 text-white">
-                  Take TourVision with you everywhere
-                </h2>
-                <p className="mt-4 max-w-[520px] text-white/75">
-                  Save places, start AI tours instantly, scan QR codes on the
-                  go, and plan entire journeys right from your phone.
-                </p>
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <button type="button" className="btn-ghost">
-                    App Store
-                  </button>
-                  <button type="button" className="btn-ghost">
-                    Google Play
-                  </button>
-                </div>
-              </div>
-
-              {/* Phone mockup */}
-              <div className="mx-auto w-full max-w-[360px] rounded-[32px] border border-white/10 bg-white/10 p-5 backdrop-blur-sm">
-                <div className="mx-auto w-full max-w-[250px] rounded-[28px] bg-white p-4 text-[var(--c-text-primary)] shadow-[var(--shadow-modal)]">
-                  <div className="rounded-[20px] bg-[var(--c-bg)] p-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold">TourVision</span>
-                      <span className="badge badge-orange">Live</span>
-                    </div>
-                    <div className="mt-4 rounded-[18px] bg-[var(--c-teal-light)] p-4">
-                      <p className="text-sm font-semibold">Explore Nearby</p>
-                      <p className="mt-1 text-xs text-[var(--c-text-secondary)]">
-                        AR tours · audio guides · saved trips
-                      </p>
-                    </div>
-                    <div className="mt-4 space-y-3">
-                      <div className="rounded-[16px] bg-white p-3 shadow-[var(--shadow-card)]">
-                        <p className="text-sm font-semibold">Amber Fort</p>
-                        <p className="text-xs text-[var(--c-text-secondary)]">
-                          AR Ready · 2.1 km away
-                        </p>
-                      </div>
-                      <div className="rounded-[16px] bg-white p-3 shadow-[var(--shadow-card)]">
-                        <p className="text-sm font-semibold">
-                          Today&apos;s plan
-                        </p>
-                        <p className="text-xs text-[var(--c-text-secondary)]">
-                          3 places · Rs 1,240 total
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── FOOTER ── */}
-      <footer className="bg-[#1A1A1A] py-14 text-white">
-        <div className="container">
-          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <p className="font-heading text-2xl font-extrabold">TourVision</p>
-              <p className="mt-4 max-w-[260px] text-white/65">
-                Travel with AI-powered stories, AR experiences, and smart
-                planning from discovery to arrival.
-              </p>
-            </div>
-            <div>
-              <p className="font-heading text-lg font-bold">Discover</p>
-              <ul className="mt-4 space-y-3 text-white/65">
-                {[
-                  "Trending places",
-                  "Collections",
-                  "AR experiences",
-                  "Nearby guides",
-                ].map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <p className="font-heading text-lg font-bold">Company</p>
-              <ul className="mt-4 space-y-3 text-white/65">
-                {["About", "Careers", "Partners", "Press"].map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <p className="font-heading text-lg font-bold">Support</p>
-              <ul className="mt-4 space-y-3 text-white/65">
-                {[
-                  "Help Center",
-                  "Accessibility",
-                  "Cancellation options",
-                  "Contact us",
-                ].map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-10 flex flex-col gap-4 border-t border-white/10 pt-6 text-sm text-white/55 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-4">
-              <span>© 2026 TourVision</span>
-              <span>Instagram</span>
-              <span>X</span>
-              <span>YouTube</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <span>English (IN)</span>
-              <span>Rs INR</span>
-            </div>
-          </div>
-        </div>
-      </footer>
-
-      {/* ── QR SCANNER MODAL ── */}
       <QRScanner
         isOpen={scannerOpen}
         onClose={() => setScannerOpen(false)}

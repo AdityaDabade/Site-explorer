@@ -17,6 +17,7 @@ import {
 } from '../components/place';
 import { useLocationContext } from '../context/LocationContext';
 import { useGeofence } from '../hooks/useGeofence';
+import { resolvePlaceImage } from '../utils/placeImages';
 
 const TABS = ['Overview', 'AR Tour', 'AI Guide', 'Nearby'];
 
@@ -104,9 +105,10 @@ const createGuideSections = (place) => {
   const bestFor = place?.best_for || 'photography, short walks, and relaxed exploration';
   const hours = place?.hours ? ` Visiting hours are ${place.hours}.` : '';
   const image =
-    place?.image ||
-    place?.images?.[0] ||
-    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop&q=80';
+    resolvePlaceImage(
+      place,
+      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop&q=80'
+    );
 
   return {
     id: place?.place_id || place?._id || place?.id || 'current-place',
@@ -166,7 +168,14 @@ export default function PlacePage() {
       return [RAJGAD_PLACE_DATA.image];
     }
 
-    return aiContent?.images || place?.images || [];
+    const images = aiContent?.images || place?.images || [];
+    const knownImage = resolvePlaceImage(place);
+
+    if (knownImage && !images.includes(knownImage)) {
+      return [knownImage, ...images];
+    }
+
+    return images;
   }, [aiContent?.images, place]);
   const nearbyPlaces = useMemo(() => place?.nearby_places || [], [place?.nearby_places]);
   const score = Number(place?.score || place?.rating || 9.4).toFixed(1);
@@ -429,7 +438,7 @@ export default function PlacePage() {
 
   const mobileGallery = gallery.length
     ? gallery
-    : [place?.image || 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop&q=80'];
+    : [resolvePlaceImage(place, 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop&q=80')];
 
   // Badge elements
   const badges = (
@@ -446,7 +455,14 @@ export default function PlacePage() {
         <PlaceHeader place={place} badges={badges} />
 
         <div className="mt-8">
-          <PlaceGallery gallery={gallery} placeName={place?.name} mobileGallery={mobileGallery} />
+          <PlaceGallery
+            gallery={gallery}
+            locationName={place?.location_name || place?.location || place?.city || 'TourVision destination'}
+            mobileGallery={mobileGallery}
+            onStartGuide={handleStartTour}
+            placeName={place?.name}
+            rating={place?.rating}
+          />
         </div>
 
         {/* Main Content Grid */}

@@ -1,7 +1,10 @@
 import PropTypes from 'prop-types';
-import { useMemo } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import QRScanner from '../qr/QRScanner';
+import { parsePlaceIdFromQr } from '../../utils/qr';
 import SidebarItem from './SidebarItem';
 
 function CompassIcon() {
@@ -22,10 +25,11 @@ function PinIcon() {
   );
 }
 
-function HeartIcon() {
+function SparkIcon() {
   return (
     <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-      <path d="m12 20-1.4-1.3C6.1 14.6 4 12.6 4 9.9A4 4 0 0 1 8.1 6 4.5 4.5 0 0 1 12 8.2 4.5 4.5 0 0 1 15.9 6 4 4 0 0 1 20 9.9c0 2.7-2.1 4.7-6.6 8.8Z" />
+      <path d="M12 3l1.6 5.3L19 10l-5.4 1.7L12 17l-1.6-5.3L5 10l5.4-1.7z" />
+      <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" />
     </svg>
   );
 }
@@ -39,23 +43,65 @@ function TripsIcon() {
   );
 }
 
-function WalletIcon() {
+function PlannerIcon() {
   return (
     <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-      <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18a2 2 0 0 1 2 2v1H7a2 2 0 1 0 0 4h13v5a2 2 0 0 1-2 2H6.5A2.5 2.5 0 0 1 4 16.5z" />
-      <path d="M20 8v4h-4a2 2 0 0 1 0-4z" />
+      <path d="M7 3v3M17 3v3" />
+      <path d="M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" />
+      <path d="M3 10h18" />
+      <path d="M7.5 15.5h2.2l2.1-2.5 2.2 4 2.5-3H18" />
     </svg>
   );
 }
 
-function ProfileIcon() {
+function QrIcon() {
   return (
     <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-      <circle cx="12" cy="8" r="3.25" />
-      <path d="M5.5 19a6.5 6.5 0 0 1 13 0" />
+      <path d="M4 7V4h3" />
+      <path d="M17 4h3v3" />
+      <path d="M20 17v3h-3" />
+      <path d="M7 20H4v-3" />
+      <path d="M8 8h3v3H8z" />
+      <path d="M13 8h3" />
+      <path d="M13 12h3v4h-4" />
+      <path d="M8 13v3h2" />
     </svg>
   );
 }
+
+function ActionSidebarItem({ icon, isCollapsed, label, onClick }) {
+  return (
+    <div className="group relative flex justify-center">
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={isCollapsed ? label : undefined}
+        title={isCollapsed ? label : undefined}
+        className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-white/55 text-sm font-semibold text-slate-600 transition-colors duration-200 hover:bg-white hover:text-teal-700 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/60 focus-visible:ring-offset-2"
+      >
+        <span className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all duration-300">
+          {icon}
+        </span>
+      </button>
+      {isCollapsed ? (
+        <span role="tooltip" className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100">
+          {label}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+ActionSidebarItem.propTypes = {
+  icon: PropTypes.node.isRequired,
+  isCollapsed: PropTypes.bool,
+  label: PropTypes.string.isRequired,
+  onClick: PropTypes.func.isRequired
+};
+
+ActionSidebarItem.defaultProps = {
+  isCollapsed: false
+};
 
 function CollapseIcon({ collapsed }) {
   return (
@@ -105,35 +151,48 @@ export default function Sidebar({
   onToggleCollapse
 }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAuthenticated, logout, user } = useAuth();
+  const [scannerOpen, setScannerOpen] = useState(false);
   const isAdminRoute = location.pathname.startsWith('/admin');
 
   const navItems = useMemo(
     () => [
-      { icon: <CompassIcon />, isActive: location.pathname === '/', label: 'Explore', to: '/' },
+      { icon: <CompassIcon />, isActive: location.pathname === '/', label: 'Home', to: '/' },
       {
         icon: <PinIcon />,
         isActive: location.pathname === '/nearby' || location.pathname.startsWith('/place/'),
         label: 'Nearby',
         to: '/nearby'
       },
-      { icon: <HeartIcon />, isActive: location.pathname === '/saved', label: 'Saved', to: '/saved' },
-      { icon: <TripsIcon />, isActive: location.pathname === '/trip-planner', label: 'Trip Planner', to: '/trip-planner' },
       {
-        icon: <WalletIcon />,
-        isActive: location.pathname.startsWith('/trips') || location.pathname === '/expenses',
-        label: 'Trips / Expenses',
-        to: '/trips'
+        icon: <PlannerIcon />,
+        isActive: location.pathname === '/trip-planner',
+        label: 'Trip Planner',
+        to: '/trip-planner'
       },
       {
-        icon: <ProfileIcon />,
-        isActive: location.pathname === '/profile' || location.pathname === '/login' || location.pathname === '/signup',
-        label: 'Profile',
-        to: isAuthenticated ? '/profile' : '/login'
+        icon: <TripsIcon />,
+        isActive: location.pathname.startsWith('/trips'),
+        label: 'My Trips',
+        to: '/trips'
       }
     ],
-    [isAuthenticated, location.pathname]
+    [location.pathname]
   );
+
+  const handleQrDetected = (decodedText) => {
+    const placeId = parsePlaceIdFromQr(decodedText);
+
+    if (!placeId) {
+      toast.error('Invalid QR');
+      return;
+    }
+
+    setScannerOpen(false);
+    toast.success('Opening your landmark experience.');
+    navigate(`/place/${placeId}`);
+  };
 
   if (isAdminRoute) {
     return null;
@@ -211,6 +270,24 @@ export default function Sidebar({
               to={item.to}
             />
           ))}
+          <ActionSidebarItem
+            icon={<SparkIcon />}
+            isCollapsed
+            label="AI Guide"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('tourvision:open-chat'));
+              onCloseMobile();
+            }}
+          />
+          <ActionSidebarItem
+            icon={<QrIcon />}
+            isCollapsed
+            label="QR Scanner"
+            onClick={() => {
+              setScannerOpen(true);
+              onCloseMobile();
+            }}
+          />
         </nav>
 
         <div className="mt-6 rounded-2xl border border-slate-200/70 bg-white/60 p-2 shadow-sm transition-all duration-300 lg:flex lg:justify-center">
@@ -252,6 +329,7 @@ export default function Sidebar({
           </div>
         </div>
       </aside>
+      <QRScanner isOpen={scannerOpen} onClose={() => setScannerOpen(false)} onDetected={handleQrDetected} />
     </>
   );
 }

@@ -136,22 +136,12 @@ export default function NavbarModern({ onChatOpen, user }) {
                     <button
                       type="button"
                       onClick={() => {
-                        navigate('/trip-planner');
+                        navigate('/trips');
                         setMenuOpen(false);
                       }}
                       className="w-full px-4 py-2 text-left text-sm text-[var(--c-text-secondary)] transition-colors hover:bg-[var(--c-surface-inset)] hover:text-[var(--c-text-primary)]"
                     >
                       My Trips
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigate('/expenses');
-                        setMenuOpen(false);
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-[var(--c-text-secondary)] transition-colors hover:bg-[var(--c-surface-inset)] hover:text-[var(--c-text-primary)]"
-                    >
-                      Wishlist
                     </button>
                     <button
                       type="button"

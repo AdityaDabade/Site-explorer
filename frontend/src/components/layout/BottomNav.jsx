@@ -101,7 +101,7 @@ export default function BottomNav() {
     {
       label: 'Trips',
       kind: 'wallet',
-      active: location.pathname.startsWith('/trips') || location.pathname === '/expenses',
+      active: location.pathname.startsWith('/trips') || location.pathname === '/trip-planner',
       action: () => navigate('/trips')
     },
     {

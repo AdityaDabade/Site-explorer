@@ -63,10 +63,10 @@ export default function BottomNavModern() {
 
   const tabs = [
     { label: 'Explore', kind: 'explore', path: '/', action: () => navigate('/') },
-    { label: 'Wishlist', kind: 'wishlist', path: '/expenses', action: () => navigate('/expenses') },
+    { label: 'Nearby', kind: 'explore', path: '/nearby', action: () => navigate('/nearby') },
     { label: 'Scan', kind: 'scan', path: '#scan', action: () => window.dispatchEvent(new CustomEvent('tourvision:scan-qr')) },
-    { label: 'Trips', kind: 'trips', path: '/trip-planner', action: () => navigate('/trip-planner') },
-    { label: 'Profile', kind: 'profile', path: isAuthenticated ? '/expenses' : '/login', action: () => navigate(isAuthenticated ? '/expenses' : '/login') },
+    { label: 'Trips', kind: 'trips', path: '/trips', action: () => navigate('/trips') },
+    { label: 'Profile', kind: 'profile', path: isAuthenticated ? '/profile' : '/login', action: () => navigate(isAuthenticated ? '/profile' : '/login') },
   ];
 
   const currentPath = location.pathname.split('/')[1] ? `/${location.pathname.split('/')[1]}` : '/';
