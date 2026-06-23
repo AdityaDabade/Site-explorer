@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import QRScanner from '../qr/QRScanner';
-import { parsePlaceIdFromQr } from '../../utils/qr';
+import { parsePlaceIdFromImageResult, parsePlaceIdFromQr } from '../../utils/qr';
 import SidebarItem from './SidebarItem';
 
 function CompassIcon() {
@@ -194,6 +194,19 @@ export default function Sidebar({
     navigate(`/place/${placeId}`);
   };
 
+  const handleImageDetected = async (result) => {
+    const placeId = parsePlaceIdFromImageResult(result);
+
+    if (!placeId) {
+      toast.error('Unable to identify this image');
+      return;
+    }
+
+    setScannerOpen(false);
+    toast.success(`CNN matched ${result?.name || 'a landmark'}.`);
+    navigate(`/place/${placeId}`);
+  };
+
   if (isAdminRoute) {
     return null;
   }
@@ -282,7 +295,7 @@ export default function Sidebar({
           <ActionSidebarItem
             icon={<QrIcon />}
             isCollapsed
-            label="QR Scanner"
+            label="Scanner"
             onClick={() => {
               setScannerOpen(true);
               onCloseMobile();
@@ -329,7 +342,12 @@ export default function Sidebar({
           </div>
         </div>
       </aside>
-      <QRScanner isOpen={scannerOpen} onClose={() => setScannerOpen(false)} onDetected={handleQrDetected} />
+      <QRScanner
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onDetected={handleQrDetected}
+        onImageDetected={handleImageDetected}
+      />
     </>
   );
 }

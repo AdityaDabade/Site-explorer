@@ -176,6 +176,12 @@ const scanQr = asyncHandler(async (req, res) => {
     return failure(res, 404, "No place found for this QR code.");
   }
 
+  place.qr_stats = {
+    total_scans: Number(place.qr_stats?.total_scans || 0) + 1,
+    last_scan_at: new Date()
+  };
+  await place.save();
+
   return success(res, {
     place_id: place.place_id,
     placeId: place.place_id,

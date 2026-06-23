@@ -17,6 +17,24 @@ async function hydrateUserFromToken(req, res, next, required) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (decoded.demo_admin && decoded.role === "admin") {
+      const adminEmail = process.env.ADMIN_EMAIL || "admin@tourvision.com";
+
+      req.user = {
+        ...decoded,
+        _id: "demo-admin",
+        id: "demo-admin",
+        email: adminEmail,
+        name: "TourVision Admin",
+        role: "admin",
+        active: true,
+        demo_admin: true
+      };
+      req.account = null;
+      return next();
+    }
+
     const user = await User.findById(decoded.id).select("-password");
 
     if (!user || !user.active) {
@@ -59,8 +77,13 @@ function adminOnly(req, res, next) {
   return next();
 }
 
+function isAdmin(req, res, next) {
+  return adminOnly(req, res, next);
+}
+
 module.exports = {
   adminOnly,
+  isAdmin,
   optionalAuth,
   protect
 };

@@ -145,6 +145,10 @@ const placeSchema = new mongoose.Schema(
       type: [String],
       default: []
     },
+    videos: {
+      type: [String],
+      default: []
+    },
     has_ar: {
       type: Boolean,
       default: false
@@ -152,6 +156,16 @@ const placeSchema = new mongoose.Schema(
     ar_model_url: {
       type: String,
       default: ""
+    },
+    qr_stats: {
+      total_scans: {
+        type: Number,
+        default: 0
+      },
+      last_scan_at: {
+        type: Date,
+        default: null
+      }
     },
     has_ai_content: {
       type: Boolean,
@@ -164,6 +178,19 @@ const placeSchema = new mongoose.Schema(
     ai_content: {
       type: aiContentSchema,
       default: () => ({})
+    },
+    ai_sections: {
+      type: [
+        {
+          title: String,
+          body: String,
+          order: {
+            type: Number,
+            default: 0
+          }
+        }
+      ],
+      default: []
     }
   },
   buildSchemaOptions()

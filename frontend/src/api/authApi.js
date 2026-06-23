@@ -2,6 +2,7 @@ import axiosInstance from './axiosInstance';
 
 // Authentication endpoints for JWT-based session handling.
 export const login = (payload) => axiosInstance.post('/auth/login', payload);
+export const adminLogin = (payload) => axiosInstance.post('/auth/admin/login', payload);
 
 export const signup = (payload) => axiosInstance.post('/auth/signup', payload);
 

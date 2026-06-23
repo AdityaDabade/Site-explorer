@@ -1,278 +1,845 @@
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { approveContent, getUsers, rejectContent } from '../api/adminApi';
-import axiosInstance from '../api/axiosInstance';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from 'recharts';
+import {
+  approveContent,
+  createAlert,
+  createPlace,
+  deleteAlert,
+  deleteFeedback,
+  deleteMedia,
+  deletePlace,
+  deleteTrip,
+  deleteUser,
+  generateQr,
+  getAdminAnalytics,
+  getAdminFeedback,
+  getAdminOverview,
+  getAdminPlaces,
+  getAdminTrips,
+  getAlerts,
+  getMedia,
+  getPendingContent,
+  getSettings,
+  getUserTrips,
+  getUsers,
+  rejectContent,
+  updateAiGuide,
+  updatePlace,
+  updateSettings,
+  updateUser,
+  uploadAdminMedia
+} from '../api/adminApi';
 import { extractArray, extractData, extractMessage } from '../api/responseUtils';
 import Loader from '../components/common/Loader';
 import { useAuth } from '../context/AuthContext';
 
-const DASHBOARD_NAV = ['Dashboard', 'Places', 'Users', 'AI Content', 'Settings'];
+const NAV_ITEMS = [
+  'Dashboard',
+  'Places',
+  'Users',
+  'Trips',
+  'AI Guide',
+  'QR Codes'
+];
 
-/**
- * Vercel/Linear-inspired admin dashboard for moderation and user management.
- */
+const EMPTY_PLACE_FORM = {
+  name: '',
+  description: '',
+  location_name: '',
+  city: '',
+  latitude: '',
+  longitude: '',
+  images: '',
+  videos: '',
+  category: 'Fort'
+};
+
+const CHART_COLORS = ['#0f766e', '#2563eb', '#f97316', '#7c3aed', '#0891b2'];
+
+function formatDate(value) {
+  return value ? new Date(value).toLocaleDateString() : 'Not recorded';
+}
+
+function asList(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function getQrImageUrl(payload) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(payload || '')}`;
+}
+
+function AdminSection({ active, children, name }) {
+  if (active !== name) {
+    return null;
+  }
+
+  return <div className="space-y-6">{children}</div>;
+}
+
+function StatCard({ label, value, detail }) {
+  return (
+    <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">{label}</p>
+      <p className="mt-3 font-heading text-3xl font-extrabold text-slate-950">{value ?? 0}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-500">{detail}</p>
+    </article>
+  );
+}
+
+function Field({ as = 'input', label, ...props }) {
+  const Component = as;
+  return (
+    <label className="input-wrap">
+      <span className="input-label">{label}</span>
+      <Component className="field" {...props} />
+    </label>
+  );
+}
+
+function AdminTable({ children, columns, empty }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-slate-50 text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
+            <tr>{columns.map((column) => <th key={column} className="px-5 py-4">{column}</th>)}</tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">{children}</tbody>
+        </table>
+      </div>
+      {empty ? <div className="px-5 py-8 text-center text-sm font-semibold text-slate-500">{empty}</div> : null}
+    </div>
+  );
+}
+
 export default function AdminPage() {
-  const { user } = useAuth();
-  const [pendingContent, setPendingContent] = useState([]);
-  const [users, setUsers] = useState([]);
+  const { user, logout } = useAuth();
+  const [active, setActive] = useState('Dashboard');
   const [loading, setLoading] = useState(true);
-  const [actionLoadingId, setActionLoadingId] = useState('');
+  const [saving, setSaving] = useState('');
+  const [overview, setOverview] = useState({ cards: {}, recent_activity: [] });
+  const [analytics, setAnalytics] = useState({});
+  const [users, setUsers] = useState([]);
+  const [places, setPlaces] = useState([]);
+  const [trips, setTrips] = useState([]);
+  const [feedback, setFeedback] = useState([]);
+  const [media, setMedia] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [pendingContent, setPendingContent] = useState([]);
+  const [settings, setSettingsState] = useState({});
+  const [userSearch, setUserSearch] = useState('');
+  const [userTripsPanel, setUserTripsPanel] = useState({ user: null, trips: [] });
+  const [selectedPlaceId, setSelectedPlaceId] = useState('');
+  const [editingPlaceId, setEditingPlaceId] = useState('');
+  const [placeForm, setPlaceForm] = useState(EMPTY_PLACE_FORM);
+  const [alertForm, setAlertForm] = useState({ title: '', message: '', type: 'weather', severity: 'info' });
+
+  const selectedPlace = useMemo(
+    () => places.find((place) => place.id === selectedPlaceId) || places[0],
+    [places, selectedPlaceId]
+  );
 
   useEffect(() => {
     let isMounted = true;
 
-    const fetchAdminData = async () => {
+    async function loadAdminData() {
       setLoading(true);
-
-        try {
-          const [contentResponse, usersResponse] = await Promise.all([
-            axiosInstance.get('/admin/content/pending'),
-            getUsers()
-          ]);
+      try {
+        const [
+          overviewResponse,
+          analyticsResponse,
+          usersResponse,
+          placesResponse,
+          tripsResponse,
+          feedbackResponse,
+          mediaResponse,
+          alertsResponse,
+          contentResponse,
+          settingsResponse
+        ] = await Promise.all([
+          getAdminOverview(),
+          getAdminAnalytics(),
+          getUsers(),
+          getAdminPlaces(),
+          getAdminTrips(),
+          getAdminFeedback(),
+          getMedia(),
+          getAlerts(),
+          getPendingContent(),
+          getSettings()
+        ]);
 
         if (!isMounted) {
           return;
         }
 
-        setPendingContent(extractArray(contentResponse, ['items']));
+        setOverview(extractData(overviewResponse));
+        setAnalytics(extractData(analyticsResponse));
         setUsers(extractArray(usersResponse, ['users']));
+        setPlaces(extractArray(placesResponse, ['places']));
+        setTrips(extractArray(tripsResponse, ['trips']));
+        setFeedback(extractArray(feedbackResponse, ['feedback']));
+        setMedia(extractArray(mediaResponse, ['media']));
+        setAlerts(extractArray(alertsResponse, ['alerts']));
+        setPendingContent(extractArray(contentResponse, ['items']));
+        setSettingsState(extractData(settingsResponse)?.settings || {});
       } catch (error) {
         if (isMounted) {
-          toast.error(extractMessage(error, 'Unable to load admin data.'));
+          toast.error(extractMessage(error, 'Unable to load admin dashboard.'));
         }
       } finally {
         if (isMounted) {
           setLoading(false);
         }
       }
-    };
+    }
 
-    fetchAdminData();
+    loadAdminData();
     return () => {
       isMounted = false;
     };
   }, []);
 
-  const stats = useMemo(
-    () => [
-      { label: 'Pending reviews', value: pendingContent.length, icon: '🧠', tone: 'bg-[#FEF0EB] text-[var(--c-primary)]', trend: 'vs last week ↑ 8%' },
-      { label: 'Active users', value: users.filter((item) => item.active).length, icon: '👥', tone: 'bg-[var(--c-teal-light)] text-[var(--c-teal)]', trend: 'vs last week ↑ 5%' },
-      { label: 'Published places', value: 124, icon: '📍', tone: 'bg-[#FFF8E1] text-[var(--c-warning)]', trend: 'vs last week ↑ 12%' },
-      { label: 'Flagged items', value: 6, icon: '⚠️', tone: 'bg-[#FDECEC] text-[var(--c-error)]', trend: 'vs last week ↓ 3%' }
-    ],
-    [pendingContent.length, users]
+  const cards = overview?.cards || {};
+  const filteredUsers = users.filter((item) =>
+    `${item.name || ''} ${item.email || ''}`.toLowerCase().includes(userSearch.toLowerCase())
   );
 
-  const updateContentStatus = async (contentId, status) => {
-    setActionLoadingId(contentId);
+  const refreshPlaces = async () => {
+    const response = await getAdminPlaces();
+    setPlaces(extractArray(response, ['places']));
+  };
 
+  const handlePlaceSubmit = async (event) => {
+    event.preventDefault();
+    setSaving('place');
     try {
-      if (status === 'approved') {
-        await approveContent(contentId);
+      if (editingPlaceId) {
+        await updatePlace(editingPlaceId, placeForm);
       } else {
-        await rejectContent(contentId);
+        await createPlace(placeForm);
       }
-      setPendingContent((current) => current.filter((item) => item.id !== contentId));
-      toast.success(`Content ${status.toLowerCase()}.`);
+      setPlaceForm(EMPTY_PLACE_FORM);
+      setEditingPlaceId('');
+      await refreshPlaces();
+      toast.success(editingPlaceId ? 'Place updated.' : 'Place added.');
     } catch (error) {
-      toast.error(extractMessage(error, 'Unable to update content status.'));
+      toast.error(extractMessage(error, 'Unable to save place.'));
     } finally {
-      setActionLoadingId('');
+      setSaving('');
     }
   };
 
-  const toggleUserStatus = async (managedUser) => {
-    setActionLoadingId(`user-${managedUser.id}`);
+  const startPlaceEdit = (place) => {
+    setEditingPlaceId(place.id);
+    setPlaceForm({
+      name: place.name || '',
+      description: place.description || '',
+      location_name: place.location_name || '',
+      city: place.city || '',
+      latitude: place.latitude || '',
+      longitude: place.longitude || '',
+      images: asList(place.images).join(', '),
+      videos: asList(place.videos).join(', '),
+      category: place.category || 'Fort'
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const showUserTrips = async (managedUser) => {
+    setSaving(`user-trips-${managedUser.id}`);
+    try {
+      const response = await getUserTrips(managedUser.id);
+      setUserTripsPanel({ user: managedUser, trips: extractArray(response, ['trips']) });
+    } catch (error) {
+      toast.error(extractMessage(error, 'Unable to load user trips.'));
+    } finally {
+      setSaving('');
+    }
+  };
+
+  const handleAiSave = async () => {
+    if (!selectedPlace) {
+      return;
+    }
+
+    setSaving('ai-guide');
+    try {
+      await updateAiGuide(selectedPlace.id, {
+        summary: selectedPlace.ai_content?.summary || selectedPlace.description || '',
+        description: selectedPlace.ai_content?.description || selectedPlace.description || '',
+        sections: selectedPlace.ai_sections || []
+      });
+      await refreshPlaces();
+      toast.success('AI guide content updated.');
+    } catch (error) {
+      toast.error(extractMessage(error, 'Unable to update AI guide.'));
+    } finally {
+      setSaving('');
+    }
+  };
+
+  const mutatePlaceSection = (sectionIndex, key, value) => {
+    setPlaces((current) =>
+      current.map((place) => {
+        if (place.id !== selectedPlace.id) {
+          return place;
+        }
+
+        const sections = asList(place.ai_sections).map((section, index) =>
+          index === sectionIndex ? { ...section, [key]: value } : section
+        );
+
+        return { ...place, ai_sections: sections };
+      })
+    );
+  };
+
+  const addAiSection = () => {
+    if (!selectedPlace) {
+      return;
+    }
+
+    setPlaces((current) =>
+      current.map((place) =>
+        place.id === selectedPlace.id
+          ? {
+              ...place,
+              ai_sections: [
+                ...asList(place.ai_sections),
+                { title: 'New Section', body: '', order: asList(place.ai_sections).length }
+              ]
+            }
+          : place
+      )
+    );
+  };
+
+  const removeAiSection = (indexToRemove) => {
+    setPlaces((current) =>
+      current.map((place) =>
+        place.id === selectedPlace.id
+          ? { ...place, ai_sections: asList(place.ai_sections).filter((_, index) => index !== indexToRemove) }
+          : place
+      )
+    );
+  };
+
+  const handleAlertSubmit = async (event) => {
+    event.preventDefault();
+    setSaving('alert');
+    try {
+      const response = await createAlert(alertForm);
+      setAlerts((current) => [extractData(response).alert, ...current]);
+      setAlertForm({ title: '', message: '', type: 'weather', severity: 'info' });
+      toast.success('Alert published.');
+    } catch (error) {
+      toast.error(extractMessage(error, 'Unable to create alert.'));
+    } finally {
+      setSaving('');
+    }
+  };
+
+  const handleMediaUpload = async (event) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) {
+      return;
+    }
+
+    const formData = new FormData();
+    files.forEach((file) => formData.append('media', file));
+    setSaving('media');
 
     try {
-      const response = await axiosInstance.put(`/admin/users/${managedUser.id}`, {
-        active: !managedUser.active
-      });
-      const updatedUser = extractData(response)?.user || { ...managedUser, active: !managedUser.active };
-      setUsers((current) => current.map((item) => (item.id === managedUser.id ? updatedUser : item)));
-      toast.success('User updated.');
+      await uploadAdminMedia(formData);
+      const response = await getMedia();
+      setMedia(extractArray(response, ['media']));
+      toast.success('Media uploaded.');
     } catch (error) {
-      toast.error(extractMessage(error, 'Unable to update user.'));
+      toast.error(extractMessage(error, 'Unable to upload media.'));
     } finally {
-      setActionLoadingId('');
+      event.target.value = '';
+      setSaving('');
+    }
+  };
+
+  const saveSettings = async () => {
+    setSaving('settings');
+    try {
+      const response = await updateSettings(settings);
+      setSettingsState(extractData(response)?.settings || settings);
+      toast.success('Settings saved.');
+    } catch (error) {
+      toast.error(extractMessage(error, 'Unable to save settings.'));
+    } finally {
+      setSaving('');
     }
   };
 
   if (user?.role && user.role !== 'admin') {
     return (
       <div className="container py-16">
-        <div className="card card-bordered p-8">
-          <h1>Admin access required</h1>
-          <p className="mt-3 text-[var(--c-text-secondary)]">Your account is authenticated, but this area is reserved for administrators.</p>
+        <div className="rounded-lg border border-slate-200 bg-white p-8">
+          <h1 className="text-3xl">Admin access required</h1>
+          <p className="mt-3 text-slate-600">Your account is authenticated, but this area is reserved for administrators.</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-[calc(100vh-80px)] bg-[#FAFAFA]">
-      <div className="grid min-h-[calc(100vh-80px)] lg:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="hidden border-r border-[var(--c-border)] bg-white lg:block">
-          <div className="sticky top-20 p-6">
-            <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-[16px] bg-[var(--c-primary-light)] text-lg">🧭</span>
-              <div>
-                <p className="font-heading text-lg font-extrabold">TourVision</p>
-                <p className="text-sm text-[var(--c-text-secondary)]">Admin Console</p>
-              </div>
-            </div>
+  if (loading) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <Loader label="Loading admin dashboard..." size="lg" />
+      </div>
+    );
+  }
 
-            <nav className="mt-8 space-y-1">
-              {DASHBOARD_NAV.map((item, index) => (
+  return (
+    <div className="min-h-screen bg-slate-100 text-slate-950">
+      <div className="grid min-h-screen lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="border-r border-slate-200 bg-slate-950 text-white">
+          <div className="sticky top-0 p-5">
+            <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-teal-200">TourVision</p>
+              <h1 className="mt-1 text-2xl font-extrabold">Admin</h1>
+              <p className="mt-2 text-sm text-slate-300">{user?.name || user?.email}</p>
+            </div>
+            <nav className="mt-5 grid grid-cols-2 gap-2 lg:grid-cols-1">
+              {NAV_ITEMS.map((item) => (
                 <button
                   key={item}
                   type="button"
-                  className={`flex w-full items-center gap-3 rounded-[var(--r-md)] px-4 py-3 text-left text-sm font-semibold ${
-                    index === 0
-                      ? 'border-l-2 border-[var(--c-primary)] bg-[var(--c-primary-light)] text-[var(--c-primary)]'
-                      : 'text-[var(--c-text-secondary)] hover:bg-[var(--c-surface-inset)]'
+                  onClick={() => setActive(item)}
+                  className={`rounded-lg px-4 py-3 text-left text-sm font-bold transition ${
+                    active === item ? 'bg-teal-500 text-white' : 'text-slate-300 hover:bg-white/10 hover:text-white'
                   }`}
                 >
-                  <span>{index === 0 ? '◉' : '○'}</span>
                   {item}
                 </button>
               ))}
             </nav>
+            <button type="button" className="mt-5 w-full rounded-lg border border-white/15 px-4 py-3 text-sm font-bold text-slate-200" onClick={logout}>
+              Logout
+            </button>
           </div>
         </aside>
 
-        <main className="p-4 sm:p-6 lg:p-8">
-          <header className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <main className="min-w-0 p-4 sm:p-6 lg:p-8">
+          <header className="mb-6 flex flex-col gap-3 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm text-[var(--c-text-secondary)]">Hello, {user?.name || user?.email || 'Admin'}</p>
-              <h1 className="mt-1">Dashboard</h1>
+              <p className="text-sm font-bold uppercase tracking-[0.12em] text-teal-700">Tourism Management Platform</p>
+              <h2 className="mt-1 text-3xl font-extrabold">{active}</h2>
             </div>
-            <div className="text-sm text-[var(--c-text-secondary)]">{new Date().toLocaleDateString()}</div>
+            <p className="text-sm font-semibold text-slate-500">{new Date().toLocaleString()}</p>
           </header>
 
-          {loading ? (
-            <div className="flex min-h-[50vh] items-center justify-center">
-              <Loader label="Loading admin data..." size="lg" />
-            </div>
-          ) : (
-            <div className="space-y-8">
-              <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                {stats.map((stat) => (
-                  <article key={stat.label} className="card card-bordered p-5">
-                    <div className="flex items-center justify-between">
-                      <span className={`flex h-12 w-12 items-center justify-center rounded-[14px] text-xl ${stat.tone}`}>{stat.icon}</span>
-                      <span className="text-xs font-semibold text-[var(--c-text-secondary)]">{stat.trend}</span>
+          <AdminSection active={active} name="Dashboard">
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <StatCard label="Total Users" value={cards.total_users} detail="Registered accounts" />
+              <StatCard label="Total Trips Created" value={cards.total_trips} detail={`${cards.active_trips || 0} active trips`} />
+              <StatCard label="Completed Trips" value={cards.completed_trips} detail="Finished itineraries" />
+              <StatCard label="Total Places" value={cards.total_places} detail={`${cards.qr_scans || 0} QR scans`} />
+              <StatCard label="AI Guide Usage" value={cards.ai_guide_usage} detail="Chat sessions" />
+              <StatCard label="Expenses Recorded" value={cards.total_expenses_recorded} detail={`INR ${cards.expense_value || 0}`} />
+              <StatCard label="Feedback" value={feedback.length} detail="Ratings and reviews" />
+              <StatCard label="Media Assets" value={media.length} detail="Uploaded files" />
+            </section>
+
+            <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="text-xl font-extrabold">Recent Activity</h3>
+              <div className="mt-4 divide-y divide-slate-100">
+                {asList(overview.recent_activity).map((item, index) => (
+                  <div key={`${item.label}-${index}`} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-bold">{item.label}</p>
+                      <p className="text-sm text-slate-500">{item.description}</p>
                     </div>
-                    <p className="mt-5 text-sm text-[var(--c-text-secondary)]">{stat.label}</p>
-                    <p className="mt-2 font-heading text-3xl font-extrabold">{stat.value}</p>
-                  </article>
+                    <span className="badge">{formatDate(item.date)}</span>
+                  </div>
                 ))}
-              </section>
+              </div>
+            </section>
+          </AdminSection>
 
-              <section className="card card-bordered overflow-hidden">
-                <div className="flex items-center justify-between border-b border-[var(--c-border)] px-6 py-5">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--c-text-secondary)]">Moderation</p>
-                    <h2 className="mt-2">Content Approval</h2>
-                  </div>
-                  <span className="badge badge-orange">{pendingContent.length} pending</span>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="bg-[var(--c-surface-inset)] text-[var(--c-text-secondary)]">
-                      <tr>
-                        <th className="px-6 py-4">#</th>
-                        <th className="px-6 py-4">Thumbnail</th>
-                        <th className="px-6 py-4">Place</th>
-                        <th className="px-6 py-4">Content Type</th>
-                        <th className="px-6 py-4">Status</th>
-                        <th className="px-6 py-4">Date</th>
-                        <th className="px-6 py-4">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pendingContent.map((item, index) => (
-                        <tr key={item.id} className="border-t border-[var(--c-border)] hover:bg-[var(--c-bg)]">
-                          <td className="px-6 py-4">{index + 1}</td>
-                          <td className="px-6 py-4">
-                            <div className="h-12 w-16 rounded-[10px] bg-[var(--c-surface-inset)]" />
-                          </td>
-                          <td className="px-6 py-4 font-semibold">{item.place_name || item.title}</td>
-                          <td className="px-6 py-4">{item.type || 'AI Content'}</td>
-                          <td className="px-6 py-4"><span className="badge badge-amber">Pending</span></td>
-                          <td className="px-6 py-4">{item.date || 'Today'}</td>
-                          <td className="px-6 py-4">
-                            <div className="flex gap-2">
-                              <button type="button" className="btn-outline btn-sm !border-[var(--c-success)] !text-[var(--c-success)]" disabled={actionLoadingId === item.id} onClick={() => updateContentStatus(item.id, 'approved')}>
-                                Approve
-                              </button>
-                              <button type="button" className="btn-outline btn-sm !border-[var(--c-error)] !text-[var(--c-error)]" disabled={actionLoadingId === item.id} onClick={() => updateContentStatus(item.id, 'rejected')}>
-                                Reject
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="flex items-center justify-between border-t border-[var(--c-border)] px-6 py-4 text-sm text-[var(--c-text-secondary)]">
-                  <span>Page 1 of 4</span>
-                  <div className="flex gap-2">
-                    <button type="button" className="btn-outline btn-sm">Previous</button>
-                    <button type="button" className="btn-outline btn-sm">Next</button>
-                  </div>
-                </div>
-              </section>
-
-              <section className="card card-bordered overflow-hidden">
-                <div className="flex items-center justify-between border-b border-[var(--c-border)] px-6 py-5">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--c-text-secondary)]">Users</p>
-                    <h2 className="mt-2">Traveler accounts</h2>
-                  </div>
-                  <span className="badge badge-teal">{users.length} total</span>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="bg-[var(--c-surface-inset)] text-[var(--c-text-secondary)]">
-                      <tr>
-                        <th className="px-6 py-4">Name</th>
-                        <th className="px-6 py-4">Role</th>
-                        <th className="px-6 py-4">Status</th>
-                        <th className="px-6 py-4">Joined</th>
-                        <th className="px-6 py-4">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map((managedUser) => (
-                        <tr key={managedUser.id} className="border-t border-[var(--c-border)] hover:bg-[var(--c-bg)]">
-                          <td className="px-6 py-4 font-semibold">{managedUser.name || managedUser.email}</td>
-                          <td className="px-6 py-4 capitalize">{managedUser.role || 'traveler'}</td>
-                          <td className="px-6 py-4">
-                            <span className={`badge ${managedUser.active ? 'badge-green' : 'badge-neutral'}`}>
-                              {managedUser.active ? 'Active' : 'Inactive'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">{managedUser.created_at || 'This month'}</td>
-                          <td className="px-6 py-4">
-                            <button type="button" className="btn-outline btn-sm" disabled={actionLoadingId === `user-${managedUser.id}`} onClick={() => toggleUserStatus(managedUser)}>
-                              {managedUser.active ? 'Deactivate' : 'Activate'}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
+          <AdminSection active={active} name="Users">
+            <div className="rounded-lg border border-slate-200 bg-white p-5">
+              <Field label="Search users" placeholder="Search by name or email" value={userSearch} onChange={(event) => setUserSearch(event.target.value)} />
             </div>
-          )}
+            <AdminTable columns={['Name', 'Email', 'Role', 'Status', 'Trips', 'Joined', 'Last Activity', 'Actions']} empty={!filteredUsers.length ? 'No users found.' : ''}>
+              {filteredUsers.map((managedUser) => (
+                <tr key={managedUser.id}>
+                  <td className="px-5 py-4 font-bold">{managedUser.name || 'Unnamed'}</td>
+                  <td className="px-5 py-4">{managedUser.email}</td>
+                  <td className="px-5 py-4 capitalize">{managedUser.role || 'user'}</td>
+                  <td className="px-5 py-4"><span className={`badge ${managedUser.active ? 'badge-green' : 'badge-neutral'}`}>{managedUser.active ? 'Active' : 'Suspended'}</span></td>
+                  <td className="px-5 py-4">{managedUser.trips_created || 0}</td>
+                  <td className="px-5 py-4">{formatDate(managedUser.created_at)}</td>
+                  <td className="px-5 py-4">{formatDate(managedUser.last_activity)}</td>
+                  <td className="px-5 py-4">
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className="btn-outline btn-sm" onClick={async () => {
+                        const response = await updateUser(managedUser.id, { active: !managedUser.active });
+                        setUsers((current) => current.map((item) => (item.id === managedUser.id ? extractData(response).user : item)));
+                      }}>
+                        {managedUser.active ? 'Suspend' : 'Activate'}
+                      </button>
+                      <button type="button" className="btn-outline btn-sm" onClick={() => showUserTrips(managedUser)}>
+                        View Trips
+                      </button>
+                      <button type="button" className="btn-outline btn-sm !border-red-200 !text-red-700" onClick={async () => {
+                        await deleteUser(managedUser.id);
+                        setUsers((current) => current.filter((item) => item.id !== managedUser.id));
+                      }}>
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </AdminTable>
+            {userTripsPanel.user ? (
+              <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-xl font-extrabold">{userTripsPanel.user.name || userTripsPanel.user.email} trips</h3>
+                    <p className="text-sm font-semibold text-slate-500">{userTripsPanel.trips.length} trip records</p>
+                  </div>
+                  <button type="button" className="btn-outline btn-sm" onClick={() => setUserTripsPanel({ user: null, trips: [] })}>
+                    Close
+                  </button>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {userTripsPanel.trips.map((trip) => (
+                    <article key={trip.id} className="rounded-lg border border-slate-200 p-4">
+                      <p className="font-bold">{asList(trip.destinations).map((item) => item.name).join(' -> ') || 'Trip'}</p>
+                      <p className="mt-1 text-sm text-slate-500">{trip.duration} days · {trip.status}</p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+          </AdminSection>
+
+          <AdminSection active={active} name="Places">
+            <form className="grid gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-2" onSubmit={handlePlaceSubmit}>
+              <div className="lg:col-span-2">
+                <h3 className="text-xl font-extrabold">{editingPlaceId ? 'Edit Place' : 'Add Place'}</h3>
+              </div>
+              <Field label="Name" value={placeForm.name} onChange={(event) => setPlaceForm((current) => ({ ...current, name: event.target.value }))} required />
+              <Field label="Category" value={placeForm.category} onChange={(event) => setPlaceForm((current) => ({ ...current, category: event.target.value }))} />
+              <Field label="Location" value={placeForm.location_name} onChange={(event) => setPlaceForm((current) => ({ ...current, location_name: event.target.value }))} />
+              <Field label="City" value={placeForm.city} onChange={(event) => setPlaceForm((current) => ({ ...current, city: event.target.value }))} />
+              <Field label="Latitude" value={placeForm.latitude} onChange={(event) => setPlaceForm((current) => ({ ...current, latitude: event.target.value }))} />
+              <Field label="Longitude" value={placeForm.longitude} onChange={(event) => setPlaceForm((current) => ({ ...current, longitude: event.target.value }))} />
+              <Field label="Images" placeholder="Comma separated image URLs" value={placeForm.images} onChange={(event) => setPlaceForm((current) => ({ ...current, images: event.target.value }))} />
+              <Field label="Videos" placeholder="Comma separated video URLs" value={placeForm.videos} onChange={(event) => setPlaceForm((current) => ({ ...current, videos: event.target.value }))} />
+              <Field as="textarea" label="Description" rows="4" value={placeForm.description} onChange={(event) => setPlaceForm((current) => ({ ...current, description: event.target.value }))} />
+              <div className="flex flex-wrap items-end gap-3">
+                <button type="submit" className="btn-primary" disabled={saving === 'place'}>{saving === 'place' ? 'Saving...' : editingPlaceId ? 'Update Place' : 'Add Place'}</button>
+                {editingPlaceId ? (
+                  <button type="button" className="btn-outline" onClick={() => { setEditingPlaceId(''); setPlaceForm(EMPTY_PLACE_FORM); }}>
+                    Cancel Edit
+                  </button>
+                ) : null}
+              </div>
+            </form>
+
+            <AdminTable columns={['Place', 'Category', 'Location', 'Images', 'QR', 'Actions']} empty={!places.length ? 'No places available.' : ''}>
+              {places.map((place) => (
+                <tr key={place.id}>
+                  <td className="px-5 py-4">
+                    <p className="font-bold">{place.name}</p>
+                    <p className="text-xs text-slate-500">{place.description || 'No description'}</p>
+                  </td>
+                  <td className="px-5 py-4">{place.category}</td>
+                  <td className="px-5 py-4">{place.location_name || place.city || 'Not set'}</td>
+                  <td className="px-5 py-4">{asList(place.images).length}</td>
+                  <td className="px-5 py-4">{place.qr_id || place.place_id}</td>
+                  <td className="px-5 py-4">
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className="btn-outline btn-sm" onClick={() => startPlaceEdit(place)}>Edit</button>
+                      <button type="button" className="btn-outline btn-sm" onClick={() => { setSelectedPlaceId(place.id); setActive('AI Guide'); }}>AI</button>
+                      <button type="button" className="btn-outline btn-sm !border-red-200 !text-red-700" onClick={async () => { await deletePlace(place.id); await refreshPlaces(); }}>Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </AdminTable>
+          </AdminSection>
+
+          <AdminSection active={active} name="AI Guide">
+            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <Field as="select" label="Place" value={selectedPlace?.id || ''} onChange={(event) => setSelectedPlaceId(event.target.value)}>
+                {places.map((place) => <option key={place.id} value={place.id}>{place.name}</option>)}
+              </Field>
+              <div className="mt-5 space-y-4">
+                {asList(selectedPlace?.ai_sections).map((section, index) => (
+                  <div key={`${section.title}-${index}`} className="rounded-lg border border-slate-200 p-4">
+                    <div className="grid gap-3 lg:grid-cols-[240px_minmax(0,1fr)_auto]">
+                      <input className="field" value={section.title} onChange={(event) => mutatePlaceSection(index, 'title', event.target.value)} />
+                      <textarea className="field min-h-28" value={section.body} onChange={(event) => mutatePlaceSection(index, 'body', event.target.value)} />
+                      <button type="button" className="btn-outline btn-sm self-start !border-red-200 !text-red-700" onClick={() => removeAiSection(index)}>Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button type="button" className="btn-outline" onClick={addAiSection}>Add Section</button>
+                <button type="button" className="btn-primary" disabled={saving === 'ai-guide'} onClick={handleAiSave}>Save AI Guide</button>
+              </div>
+            </div>
+          </AdminSection>
+
+          <AdminSection active={active} name="Trips">
+            <AdminTable columns={['Trip', 'User', 'Destinations', 'Cost', 'Duration', 'Status', 'Actions']} empty={!trips.length ? 'No trips found.' : ''}>
+              {trips.map((trip) => (
+                <tr key={trip.id}>
+                  <td className="px-5 py-4 font-bold">{trip.name}</td>
+                  <td className="px-5 py-4">{trip.user_name}</td>
+                  <td className="px-5 py-4">{asList(trip.destinations).map((item) => item.name).join(', ')}</td>
+                  <td className="px-5 py-4">INR {trip.cost || 0}</td>
+                  <td className="px-5 py-4">{trip.duration} days</td>
+                  <td className="px-5 py-4"><span className="badge badge-teal">{trip.status}</span></td>
+                  <td className="px-5 py-4"><button type="button" className="btn-outline btn-sm !border-red-200 !text-red-700" onClick={async () => { await deleteTrip(trip.id); setTrips((current) => current.filter((item) => item.id !== trip.id)); }}>Delete</button></td>
+                </tr>
+              ))}
+            </AdminTable>
+          </AdminSection>
+
+          <AdminSection active={active} name="QR Codes">
+            <AdminTable columns={['Place', 'Total Scans', 'Last Scan', 'Popularity', 'QR ID', 'Actions']} empty={!places.length ? 'No QR codes found.' : ''}>
+              {places.map((place) => (
+                <tr key={place.id}>
+                  <td className="px-5 py-4 font-bold">{place.name}</td>
+                  <td className="px-5 py-4">{place.qr_total_scans || 0}</td>
+                  <td className="px-5 py-4">{formatDate(place.qr_last_scan_at)}</td>
+                  <td className="px-5 py-4">{place.popularity_score || 0}</td>
+                  <td className="px-5 py-4">{place.qr_id || place.place_id}</td>
+                  <td className="px-5 py-4">
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className="btn-outline btn-sm" onClick={async () => {
+                        const response = await generateQr(place.id);
+                        toast.success(`QR payload: ${extractData(response).payload}`);
+                        await refreshPlaces();
+                      }}>
+                        Generate
+                      </button>
+                      <a
+                        className="btn-outline btn-sm"
+                        href={getQrImageUrl(place.qr_id || place.place_id)}
+                        download={`${place.place_id || place.name}-qr.png`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Download
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </AdminTable>
+          </AdminSection>
+
+          <AdminSection active={active} name="Analytics">
+            <div className="grid gap-5 xl:grid-cols-2">
+              <ChartPanel title="Monthly Trip Growth">
+                <ResponsiveContainer width="100%" height={280}>
+                  <AreaChart data={asList(analytics.monthly_trip_growth)}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip />
+                    <Area dataKey="trips" fill="#ccfbf1" stroke="#0f766e" strokeWidth={3} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </ChartPanel>
+              <ChartPanel title="User Registrations">
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={asList(analytics.user_registrations)}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="users" fill="#2563eb" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartPanel>
+              <ChartPanel title="Most Scanned QR Codes">
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={asList(analytics.most_scanned_qr)}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="scans" fill="#f97316" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartPanel>
+              <ChartPanel title="Expense Statistics">
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie data={asList(analytics.expense_statistics)} dataKey="total" nameKey="category" outerRadius={100}>
+                      {asList(analytics.expense_statistics).map((entry, index) => <Cell key={entry.category} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartPanel>
+            </div>
+          </AdminSection>
+
+          <AdminSection active={active} name="CMS">
+            <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="text-xl font-extrabold">AI Content Review</h3>
+              <div className="mt-4 divide-y divide-slate-100">
+                {pendingContent.length ? pendingContent.map((item) => (
+                  <div key={item.id} className="flex flex-col gap-3 py-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <p className="font-bold">{item.place_name}</p>
+                      <p className="text-sm text-slate-500">{item.type} · {item.status} · {item.source}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className="btn-outline btn-sm" onClick={async () => {
+                        await approveContent(item.id);
+                        setPendingContent((current) => current.filter((entry) => entry.id !== item.id));
+                        await refreshPlaces();
+                        toast.success('Content approved.');
+                      }}>
+                        Approve
+                      </button>
+                      <button type="button" className="btn-outline btn-sm !border-red-200 !text-red-700" onClick={async () => {
+                        await rejectContent(item.id);
+                        setPendingContent((current) => current.filter((entry) => entry.id !== item.id));
+                        toast.success('Content rejected.');
+                      }}>
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                )) : <p className="py-3 text-sm font-semibold text-slate-500">No AI content awaiting review.</p>}
+              </div>
+            </section>
+            <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <h3 className="text-xl font-extrabold">Upload Content Assets</h3>
+              <p className="mt-1 text-sm text-slate-500">Manage images, videos, AI content, and AR references from this centralized library.</p>
+              <input className="mt-5 field" type="file" multiple accept="image/*,video/*,audio/*" onChange={handleMediaUpload} />
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {media.map((item) => (
+                <article key={item.id || item.media_url} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="aspect-video overflow-hidden rounded-lg bg-slate-100">
+                    {String(item.mime_type).startsWith('image/') ? <img src={item.media_url} alt={item.original_name || 'Uploaded media'} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm font-bold text-slate-500">Media File</div>}
+                  </div>
+                  <p className="mt-3 font-bold">{item.original_name || 'Uploaded media'}</p>
+                  <p className="text-sm text-slate-500">{item.mime_type}</p>
+                  <button type="button" className="btn-outline btn-sm mt-3 !border-red-200 !text-red-700" onClick={async () => { await deleteMedia(item.media_url); setMedia((current) => current.filter((mediaItem) => mediaItem.media_url !== item.media_url)); }}>Delete</button>
+                </article>
+              ))}
+            </div>
+          </AdminSection>
+
+          <AdminSection active={active} name="Alerts">
+            <form className="grid gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-2" onSubmit={handleAlertSubmit}>
+              <Field label="Title" value={alertForm.title} onChange={(event) => setAlertForm((current) => ({ ...current, title: event.target.value }))} required />
+              <Field as="select" label="Type" value={alertForm.type} onChange={(event) => setAlertForm((current) => ({ ...current, type: event.target.value }))}>
+                <option value="weather">Weather Alert</option>
+                <option value="route">Route Closure</option>
+                <option value="trekking">Trekking Warning</option>
+                <option value="event">Event Notification</option>
+                <option value="general">General</option>
+              </Field>
+              <Field as="select" label="Severity" value={alertForm.severity} onChange={(event) => setAlertForm((current) => ({ ...current, severity: event.target.value }))}>
+                <option value="info">Info</option>
+                <option value="warning">Warning</option>
+                <option value="critical">Critical</option>
+              </Field>
+              <Field as="textarea" label="Message" rows="3" value={alertForm.message} onChange={(event) => setAlertForm((current) => ({ ...current, message: event.target.value }))} required />
+              <button type="submit" className="btn-primary self-end" disabled={saving === 'alert'}>Create Alert</button>
+            </form>
+            <AdminTable columns={['Title', 'Type', 'Severity', 'Status', 'Date', 'Actions']} empty={!alerts.length ? 'No alerts published.' : ''}>
+              {alerts.map((alert) => (
+                <tr key={alert.id}>
+                  <td className="px-5 py-4 font-bold">{alert.title}<p className="text-xs font-normal text-slate-500">{alert.message}</p></td>
+                  <td className="px-5 py-4 capitalize">{alert.type}</td>
+                  <td className="px-5 py-4"><span className="badge badge-amber">{alert.severity}</span></td>
+                  <td className="px-5 py-4">{alert.active ? 'Active' : 'Inactive'}</td>
+                  <td className="px-5 py-4">{formatDate(alert.created_at)}</td>
+                  <td className="px-5 py-4"><button type="button" className="btn-outline btn-sm !border-red-200 !text-red-700" onClick={async () => { await deleteAlert(alert.id); setAlerts((current) => current.filter((item) => item.id !== alert.id)); }}>Delete</button></td>
+                </tr>
+              ))}
+            </AdminTable>
+          </AdminSection>
+
+          <AdminSection active={active} name="Feedback">
+            <AdminTable columns={['User', 'Place', 'Rating', 'Sentiment', 'Review', 'Date', 'Actions']} empty={!feedback.length ? 'No feedback yet.' : ''}>
+              {feedback.map((item) => (
+                <tr key={item.id}>
+                  <td className="px-5 py-4 font-bold">{item.user_name}</td>
+                  <td className="px-5 py-4">{item.place_name}</td>
+                  <td className="px-5 py-4">{item.rating}/5</td>
+                  <td className="px-5 py-4"><span className="badge">{item.sentiment}</span></td>
+                  <td className="px-5 py-4">{item.comment || 'No comment'}</td>
+                  <td className="px-5 py-4">{formatDate(item.created_at)}</td>
+                  <td className="px-5 py-4"><button type="button" className="btn-outline btn-sm !border-red-200 !text-red-700" onClick={async () => { await deleteFeedback(item.id); setFeedback((current) => current.filter((entry) => entry.id !== item.id)); }}>Delete</button></td>
+                </tr>
+              ))}
+            </AdminTable>
+          </AdminSection>
+
+          <AdminSection active={active} name="Settings">
+            <div className="grid gap-4 lg:grid-cols-2">
+              {['app', 'ai', 'qr', 'notifications'].map((key) => (
+                <div key={key} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="text-xl font-extrabold capitalize">{key} settings</h3>
+                  <textarea
+                    className="field mt-4 min-h-48 font-mono text-sm"
+                    value={JSON.stringify(settings[key] || {}, null, 2)}
+                    onChange={(event) => {
+                      try {
+                        const nextValue = JSON.parse(event.target.value || '{}');
+                        setSettingsState((current) => ({ ...current, [key]: nextValue }));
+                      } catch (error) {
+                        toast.error('Settings must be valid JSON.');
+                      }
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+            <button type="button" className="btn-primary" disabled={saving === 'settings'} onClick={saveSettings}>Save Settings</button>
+          </AdminSection>
+
+          {pendingContent.length ? (
+            <div className="fixed bottom-4 right-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900 shadow-lg">
+              {pendingContent.length} AI content item{pendingContent.length === 1 ? '' : 's'} awaiting review
+            </div>
+          ) : null}
         </main>
       </div>
     </div>
+  );
+}
+
+function ChartPanel({ children, title }) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <h3 className="mb-4 text-xl font-extrabold">{title}</h3>
+      {children}
+    </section>
   );
 }

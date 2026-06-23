@@ -8,6 +8,8 @@ import ChatWindow from './components/chat/ChatWindow';
 import Loader from './components/common/Loader';
 import ProgressBar from './components/common/ProgressBar';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import { getActiveAlerts } from './api/alertApi';
+import { extractArray } from './api/responseUtils';
 import { useAuth } from './context/AuthContext';
 import useSidebar from './hooks/useSidebar';
 import { useSocket } from './hooks/useSocket';
@@ -15,6 +17,7 @@ import { useSocket } from './hooks/useSocket';
 const Home = lazy(() => import('./pages/Home'));
 const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
+const AdminLogin = lazy(() => import('./pages/AdminLogin'));
 const PlacePage = lazy(() => import('./pages/PlacePage'));
 const NearbyPage = lazy(() => import('./pages/NearbyPage'));
 const TripPlannerPage = lazy(() => import('./pages/TripPlannerPage'));
@@ -102,6 +105,7 @@ function AppFrame() {
     toggleCollapse
   } = useSidebar();
   const [chatOpen, setChatOpen] = useState(false);
+  const [alerts, setAlerts] = useState([]);
   const [progressState, setProgressState] = useState({
     visible: false,
     progress: 0,
@@ -154,14 +158,40 @@ function AppFrame() {
     return () => window.removeEventListener('tourvision:open-chat', handleOpenChat);
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    if (isAdminRoute) {
+      return undefined;
+    }
+
+    getActiveAlerts()
+      .then((response) => {
+        if (isMounted) {
+          setAlerts(extractArray(response, ['alerts']).slice(0, 3));
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setAlerts([]);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAdminRoute]);
+
   return (
     <div className="min-h-screen bg-[var(--c-bg)] text-[var(--c-text-primary)]">
-      <Sidebar
-        isCollapsed={isCollapsed}
-        isMobileOpen={isMobileOpen}
-        onCloseMobile={closeMobileSidebar}
-        onToggleCollapse={toggleCollapse}
-      />
+      {!isAdminRoute ? (
+        <Sidebar
+          isCollapsed={isCollapsed}
+          isMobileOpen={isMobileOpen}
+          onCloseMobile={closeMobileSidebar}
+          onToggleCollapse={toggleCollapse}
+        />
+      ) : null}
 
       <div
         className={[
@@ -169,7 +199,22 @@ function AppFrame() {
           isAdminRoute ? '' : 'lg:pl-16'
         ].join(' ')}
       >
-        <Navbar onChatOpen={() => setChatOpen(true)} onMenuToggle={openMobileSidebar} user={user} />
+        {!isAdminRoute ? (
+          <Navbar onChatOpen={() => setChatOpen(true)} onMenuToggle={openMobileSidebar} user={user} />
+        ) : null}
+
+        {!isAdminRoute && alerts.length ? (
+          <div className="mx-auto mt-4 max-w-6xl px-4">
+            <div className="flex gap-3 overflow-x-auto rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-950">
+              {alerts.map((alert) => (
+                <div key={alert.id} className="min-w-64 flex-1">
+                  <p className="text-sm font-extrabold">{alert.title}</p>
+                  <p className="text-xs font-semibold text-amber-800">{alert.message}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <main className={`${isAdminRoute ? 'pb-24' : 'pb-24'} lg:pb-10`}>
           <Outlet />
@@ -204,13 +249,15 @@ function AppFrame() {
         </button>
       ) : null}
 
-      <ChatWindow
-        contextPlaceId={contextPlaceId}
-        isOpen={chatOpen}
-        onClose={() => setChatOpen(false)}
-      />
+      {!isAdminRoute ? (
+        <ChatWindow
+          contextPlaceId={contextPlaceId}
+          isOpen={chatOpen}
+          onClose={() => setChatOpen(false)}
+        />
+      ) : null}
 
-      <BottomNav />
+      {!isAdminRoute ? <BottomNav /> : null}
     </div>
   );
 }
@@ -226,6 +273,14 @@ export default function App() {
         element={
           <LazyPage>
             <Login />
+          </LazyPage>
+        }
+      />
+      <Route
+        path="/admin/login"
+        element={
+          <LazyPage>
+            <AdminLogin />
           </LazyPage>
         }
       />
@@ -313,9 +368,10 @@ export default function App() {
           />
         </Route>
 
-        <Route element={<ProtectedRoute />}>
+        <Route element={<ProtectedRoute requiredRole="admin" />}>
+          <Route path="/admin" element={<Navigate replace to="/admin/dashboard" />} />
           <Route
-            path="/admin"
+            path="/admin/dashboard"
             element={
               <LazyPage>
                 <AdminPage />

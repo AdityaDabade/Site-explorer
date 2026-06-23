@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import PropTypes from 'prop-types';
 import { useAuth } from '../../context/AuthContext';
 import QRScanner from '../qr/QRScanner';
-import { parsePlaceIdFromQr } from '../../utils/qr';
+import { parsePlaceIdFromImageResult, parsePlaceIdFromQr } from '../../utils/qr';
 
 function TabIcon({ kind, active }) {
   const className = `h-5 w-5 transition duration-200 ${active ? 'text-teal-600' : 'text-slate-500'}`;
@@ -89,6 +89,19 @@ export default function BottomNav() {
     navigate(`/place/${placeId}`);
   };
 
+  const handleImageDetected = async (result) => {
+    const placeId = parsePlaceIdFromImageResult(result);
+
+    if (!placeId) {
+      toast.error('Unable to identify this image');
+      return;
+    }
+
+    setScannerOpen(false);
+    toast.success(`CNN matched ${result?.name || 'a landmark'}.`);
+    navigate(`/place/${placeId}`);
+  };
+
   const tabs = [
     { label: 'Home', kind: 'home', active: location.pathname === '/', action: () => navigate('/') },
     {
@@ -97,7 +110,7 @@ export default function BottomNav() {
       active: location.pathname === '/nearby' || location.pathname.startsWith('/place/'),
       action: () => navigate('/nearby')
     },
-    { label: 'Scan QR', kind: 'scan', active: false, action: () => setScannerOpen(true), isCenter: true },
+    { label: 'Scanner', kind: 'scan', active: false, action: () => setScannerOpen(true), isCenter: true },
     {
       label: 'Trips',
       kind: 'wallet',
@@ -150,6 +163,7 @@ export default function BottomNav() {
         isOpen={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onDetected={handleQrDetected}
+        onImageDetected={handleImageDetected}
       />
     </>
   );

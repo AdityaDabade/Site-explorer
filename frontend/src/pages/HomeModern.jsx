@@ -7,7 +7,7 @@ import { extractArray as sharedExtractArray } from "../api/responseUtils";
 import QRScanner from "../components/qr/QRScanner";
 import { useLocationContext } from "../context/LocationContext";
 import { useAuth } from "../context/AuthContext";
-import { parsePlaceIdFromQr } from "../utils/qr";
+import { parsePlaceIdFromImageResult, parsePlaceIdFromQr } from "../utils/qr";
 import { resolvePlaceImage } from "../utils/placeImages";
 
 const CATEGORIES = [
@@ -260,12 +260,32 @@ export default function HomeModern() {
     navigate(`/place/${placeId}`);
   };
 
+  const handleImageDetected = async (result) => {
+    const placeId = parsePlaceIdFromImageResult(result);
+
+    if (!placeId) {
+      toast.error("Unable to identify this image");
+      return;
+    }
+
+    setScannerOpen(false);
+    toast.success(`CNN matched ${result?.name || "a landmark"}.`);
+    navigate(`/place/${placeId}`);
+  };
+
   const greeting = user?.name ? `Hi, ${user.name}` : "Welcome to TourVision";
   const timeOfDay = new Date().getHours() < 12 ? "🌅" : new Date().getHours() < 18 ? "☀️" : "🌙";
 
   return (
     <>
-      {scannerOpen && <QRScanner isOpen={scannerOpen} onDetected={handleQrDetected} onClose={() => setScannerOpen(false)} />}
+      {scannerOpen && (
+        <QRScanner
+          isOpen={scannerOpen}
+          onDetected={handleQrDetected}
+          onClose={() => setScannerOpen(false)}
+          onImageDetected={handleImageDetected}
+        />
+      )}
 
       {/* ── GREETING SECTION ── */}
       <section className="border-b border-slate-200 bg-gradient-to-br from-slate-50 to-white px-4 py-8 sm:px-6 lg:px-8">
@@ -373,7 +393,7 @@ export default function HomeModern() {
         type="button"
         onClick={() => setScannerOpen(true)}
         className="fixed bottom-24 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-teal-600 text-white shadow-lg transition hover:bg-teal-700 hover:shadow-xl lg:bottom-8"
-        aria-label="Scan QR code"
+        aria-label="Open scanner"
       >
         <span className="text-2xl">📷</span>
       </button>

@@ -27,8 +27,8 @@ axiosInstance.interceptors.response.use(
       localStorage.removeItem('tourvision_token');
       localStorage.removeItem('tourvision_user');
 
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        window.location.assign('/login');
+      if (typeof window !== 'undefined' && !['/login', '/admin/login'].includes(window.location.pathname)) {
+        window.location.assign(window.location.pathname.startsWith('/admin') ? '/admin/login' : '/login');
       }
     }
 

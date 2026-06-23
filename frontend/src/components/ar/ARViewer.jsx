@@ -7,8 +7,10 @@ import '@google/model-viewer';
  */
 export default function ARViewer({ alt, iosSrc, poster, src }) {
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState('');
   const [markerFound, setMarkerFound] = useState(false);
   const [arStatus, setArStatus] = useState('idle');
+  const [canActivateAR, setCanActivateAR] = useState(false);
   const [viewerError, setViewerError] = useState('');
   const videoRef = useRef(null);
   const modelViewerRef = useRef(null);
@@ -21,13 +23,26 @@ export default function ARViewer({ alt, iosSrc, poster, src }) {
         return;
       }
 
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      if (!window.isSecureContext) {
+        setCameraError('Camera preview needs HTTPS or localhost. Open this app from a secure address and try again.');
+        setCameraOpen(false);
+        return;
+      }
+
+      setCameraError('');
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
     }
 
-    startCamera().catch(() => setCameraOpen(false));
+    startCamera().catch(() => {
+      setCameraError('Camera permission was blocked or no camera is available.');
+      setCameraOpen(false);
+    });
 
     return () => {
       stream?.getTracks().forEach((track) => track.stop());
@@ -41,16 +56,27 @@ export default function ARViewer({ alt, iosSrc, poster, src }) {
       return undefined;
     }
 
-    const handleStatus = (event) => setArStatus(event.detail?.status || 'idle');
+    const syncCanActivateAR = () => setCanActivateAR(Boolean(viewer.canActivateAR));
+    const handleStatus = (event) => {
+      const nextStatus = event.detail?.status || 'idle';
+      setArStatus(nextStatus);
+    };
     const handleError = () => setViewerError('This AR model could not be loaded. Check the model URL and file format.');
     const handleLoad = () => setViewerError('');
 
+    syncCanActivateAR();
+    const capabilityTimer = window.setInterval(syncCanActivateAR, 500);
     viewer.addEventListener('ar-status', handleStatus);
+    viewer.addEventListener('load', syncCanActivateAR);
+    viewer.addEventListener('model-visibility', syncCanActivateAR);
     viewer.addEventListener('error', handleError);
     viewer.addEventListener('load', handleLoad);
 
     return () => {
+      window.clearInterval(capabilityTimer);
       viewer.removeEventListener('ar-status', handleStatus);
+      viewer.removeEventListener('load', syncCanActivateAR);
+      viewer.removeEventListener('model-visibility', syncCanActivateAR);
       viewer.removeEventListener('error', handleError);
       viewer.removeEventListener('load', handleLoad);
     };
@@ -59,8 +85,15 @@ export default function ARViewer({ alt, iosSrc, poster, src }) {
   const handleOpenAR = () => {
     const viewer = modelViewerRef.current;
 
-    if (viewer?.activateAR) {
-      viewer.activateAR();
+    if (viewer?.activateAR && canActivateAR) {
+      setViewerError('');
+      const activation = viewer.activateAR();
+
+      if (activation?.catch) {
+        activation.catch(() => {
+          setCameraOpen(true);
+        });
+      }
       return;
     }
 
@@ -100,7 +133,9 @@ export default function ARViewer({ alt, iosSrc, poster, src }) {
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-slate-900/70" />
         <div className="relative max-w-sm px-6">
           <p className="font-heading text-xl text-white">AR Guide Preview</p>
-          <p className="mt-2">A real 3D placement model is not attached yet, so this opens a camera-based AR guide preview.</p>
+          <p className="mt-2">
+            {cameraError || 'A real 3D placement model is not attached yet, so this opens a camera-based AR guide preview.'}
+          </p>
           <button type="button" className="mt-4 rounded-full bg-teal-500 px-4 py-2 text-sm font-black text-white" onClick={() => setCameraOpen(true)}>
             Start AR Preview
           </button>
@@ -108,6 +143,10 @@ export default function ARViewer({ alt, iosSrc, poster, src }) {
       </div>
     );
   }
+
+  const supportMessage = canActivateAR
+    ? 'Drag to preview, then place on your floor'
+    : '3D preview ready. Camera guide available';
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-950 shadow-[var(--shadow-card)]">
@@ -141,18 +180,18 @@ export default function ARViewer({ alt, iosSrc, poster, src }) {
       </model-viewer>
       <div className="absolute inset-x-5 bottom-5 z-10 flex max-w-[calc(100%-10rem)] flex-wrap items-center gap-2 text-xs font-bold text-white">
         <span className="rounded-full bg-black/45 px-3 py-1.5 backdrop-blur">
-          {arStatus === 'session-started' ? 'AR session active' : 'Drag to preview, then place on your floor'}
+          {arStatus === 'session-started' ? 'AR session active' : supportMessage}
         </span>
         <button type="button" className="rounded-full bg-white/15 px-3 py-1.5 backdrop-blur transition hover:bg-white/25" onClick={handleOpenAR}>
-          Launch
+          {canActivateAR ? 'Launch' : 'Preview'}
         </button>
         <button type="button" className="rounded-full bg-white/15 px-3 py-1.5 backdrop-blur transition hover:bg-white/25" onClick={() => setCameraOpen(true)}>
           Camera Guide
         </button>
       </div>
-      {viewerError ? (
+      {viewerError || cameraError ? (
         <div className="absolute inset-x-5 top-16 z-20 rounded-xl border border-rose-200/40 bg-rose-950/80 p-3 text-sm font-semibold text-rose-50 backdrop-blur">
-          {viewerError}
+          {viewerError || cameraError}
         </div>
       ) : null}
     </div>

@@ -145,10 +145,10 @@ export default function Navbar({ onChatOpen = () => {}, onMenuToggle = () => {},
             type="button"
             onClick={handleQrScan}
             className="flex h-10 items-center gap-2 rounded-full bg-slate-950 px-3 text-white shadow-sm shadow-slate-300/70 transition-all duration-300 hover:-translate-y-0.5 hover:bg-teal-700 hover:shadow-md active:scale-95 md:px-4"
-            aria-label="Scan QR"
+            aria-label="Open scanner"
           >
             <QrIcon />
-            <span className="hidden text-sm font-bold md:inline">QR Scan</span>
+            <span className="hidden text-sm font-bold md:inline">Scanner</span>
           </button>
 
           <div className="relative" ref={menuRef}>

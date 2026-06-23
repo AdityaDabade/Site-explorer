@@ -99,6 +99,12 @@ export default function Login() {
             Create an account
           </Link>
         </p>
+        <p className="mt-3 text-sm text-slate-400">
+          Managing TourVision?{' '}
+          <Link to="/admin/login" className="font-semibold text-teal-300 hover:text-teal-200">
+            Admin login
+          </Link>
+        </p>
       </AuthCard>
     </div>
   );

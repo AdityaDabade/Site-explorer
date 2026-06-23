@@ -6,7 +6,7 @@ const User = require("../models/User");
 const { failure, success } = require("../utils/response");
 
 function signToken(user) {
-  return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+  return jwt.sign({ id: user._id || user.id, role: user.role, demo_admin: Boolean(user.demo_admin) }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || "7d"
   });
 }
@@ -69,6 +69,35 @@ async function login(req, res) {
   });
 }
 
+async function adminLogin(req, res) {
+  const { email, password } = req.body;
+  const adminEmail = process.env.ADMIN_EMAIL || "admin@tourvision.com";
+  const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
+
+  if (!email || !password) {
+    return failure(res, 400, "Email and password are required.");
+  }
+
+  if (email.toLowerCase() !== adminEmail.toLowerCase() || password !== adminPassword) {
+    return failure(res, 403, "Admin access required.");
+  }
+
+  const user = {
+    id: "demo-admin",
+    _id: "demo-admin",
+    name: "TourVision Admin",
+    email: adminEmail,
+    role: "admin",
+    active: true,
+    demo_admin: true
+  };
+
+  return success(res, {
+    token: signToken(user),
+    user
+  });
+}
+
 async function getMe(req, res) {
   return success(res, {
     user: req.account ? req.account.toJSON() : req.user
@@ -116,6 +145,7 @@ async function logout(req, res) {
 }
 
 module.exports = {
+  adminLogin,
   getMe,
   getProfileDashboard,
   login,

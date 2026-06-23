@@ -131,6 +131,30 @@ const isRajgadPlace = (place) => {
 const getRajgadPlace = () => clonePlaceContent(findPlaceContent('rajgad'));
 
 const createGuideSections = (place) => {
+  const managedSections = Array.isArray(place?.ai_sections)
+    ? place.ai_sections
+        .filter((section) => section?.title || section?.body)
+        .sort((first, second) => Number(first.order || 0) - Number(second.order || 0))
+    : [];
+
+  if (managedSections.length) {
+    const image = resolvePlaceImage(
+      place,
+      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop&q=80'
+    );
+
+    return {
+      id: place?.place_id || place?._id || place?.id || 'current-place',
+      image,
+      sections: managedSections.map((section, index) => ({
+        id: section.id || section._id || `${String(section.title || 'section').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${index}`,
+        title: section.title || `Section ${index + 1}`,
+        content: section.body || '',
+        image
+      }))
+    };
+  }
+
   const managedContent = findPlaceContent(place?.place_id || place?.id || place?.slug || place?.name);
 
   if (managedContent) {

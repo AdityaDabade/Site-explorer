@@ -18,6 +18,7 @@ const tripRoutes = require("./src/routes/trip.routes");
 const adminRoutes = require("./src/routes/admin.routes");
 const feedbackRoutes = require("./src/routes/feedback.routes");
 const aiGuideRoutes = require("./src/routes/aiGuide.routes");
+const alertRoutes = require("./src/routes/alert.routes");
 
 const app = express();
 const server = http.createServer(app);
@@ -70,6 +71,7 @@ app.use("/api/trips", tripRoutes);
 app.use("/api/trip", tripRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/feedback", feedbackRoutes);
+app.use("/api/alerts", alertRoutes);
 app.use("/api", aiGuideRoutes);
 
 app.use(notFound);

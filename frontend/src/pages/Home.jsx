@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import QRScanner from "../components/qr/QRScanner";
-import { parsePlaceIdFromQr } from "../utils/qr";
+import { parsePlaceIdFromImageResult, parsePlaceIdFromQr } from "../utils/qr";
 
 const HERO_IMAGE =
   "https://images.unsplash.com/photo-1742922016224-f4fb7f4387c5?auto=format&fit=crop&q=85&w=2400";
@@ -23,8 +23,8 @@ const FEATURES = [
   },
   {
     icon: "QR",
-    title: "QR Exploration",
-    body: "Scan a landmark QR and open the exact historical place page instantly.",
+    title: "QR and Image Scanner",
+    body: "Scan a landmark QR or upload an image for CNN-based place recognition.",
     accent: "from-slate-900 to-slate-600"
   },
   {
@@ -78,7 +78,7 @@ const POPULAR_FORTS = [
 ];
 
 const WORKFLOW = [
-  { label: "Scan QR", icon: "01" },
+  { label: "Scan QR/Image", icon: "01" },
   { label: "Open Place", icon: "02" },
   { label: "Listen to AI Guide", icon: "03" },
   { label: "Explore Sections", icon: "04" },
@@ -87,7 +87,7 @@ const WORKFLOW = [
 
 const FLOATING_CARDS = [
   { title: "AI Guide", meta: "Voice stories on demand", className: "left-4 top-8 sm:left-auto sm:right-8 sm:top-20" },
-  { title: "QR Scan", meta: "Instant place unlock", className: "right-4 top-32 sm:right-24 sm:top-56" },
+  { title: "Scanner", meta: "QR plus CNN image match", className: "right-4 top-32 sm:right-24 sm:top-56" },
   { title: "Trip Planner", meta: "Routes, costs, groups", className: "bottom-8 left-4 sm:left-auto sm:right-12" }
 ];
 
@@ -204,6 +204,19 @@ export default function Home() {
     navigate(`/place/${placeId}`);
   };
 
+  const handleImageDetected = async (result) => {
+    const placeId = parsePlaceIdFromImageResult(result);
+
+    if (!placeId) {
+      toast.error("Unable to identify this image");
+      return;
+    }
+
+    setScannerOpen(false);
+    toast.success(`CNN matched ${result?.name || "a landmark"}.`);
+    navigate(`/place/${placeId}`);
+  };
+
   const openPlace = (fort) => {
     navigate(`/place/${fort.id}`);
   };
@@ -247,7 +260,7 @@ export default function Home() {
               Explore History with AI
             </h1>
             <p className="mt-6 max-w-2xl text-lg font-medium leading-8 text-white/82 sm:text-xl">
-              Scan QR codes, listen to AI voice guides, explore forts, and plan smarter journeys.
+              Scan QR codes, recognize landmark images with CNN, listen to AI voice guides, and plan smarter journeys.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
               <button
@@ -262,7 +275,7 @@ export default function Home() {
                 className="rounded-full border border-white/30 bg-white/15 px-7 py-3.5 text-sm font-extrabold text-white shadow-2xl shadow-black/20 backdrop-blur-md transition duration-300 hover:-translate-y-1 hover:scale-[1.03] hover:bg-white/25 active:scale-95"
                 onClick={() => setScannerOpen(true)}
               >
-                Scan QR
+                Open Scanner
               </button>
             </div>
           </motion.div>
@@ -341,7 +354,7 @@ export default function Home() {
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal-300/60 to-transparent" />
         <div className="container">
           <div className="max-w-3xl">
-            <p className="text-sm font-black uppercase tracking-[0.2em] text-teal-300">QR plus AI experience flow</p>
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-teal-300">QR, image, and AI experience flow</p>
             <h2 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">From scan to story to smart plan.</h2>
           </div>
           <div className="mt-10 grid gap-4 md:grid-cols-5">
@@ -397,6 +410,7 @@ export default function Home() {
         isOpen={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onDetected={handleQrDetected}
+        onImageDetected={handleImageDetected}
       />
     </>
   );

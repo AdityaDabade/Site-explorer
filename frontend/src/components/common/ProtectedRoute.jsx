@@ -6,8 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 /**
  * Protects authenticated routes and forwards unauthenticated users to login.
  */
-export default function ProtectedRoute({ children }) {
-  const { isAuthenticated, loading } = useAuth();
+export default function ProtectedRoute({ children, requiredRole }) {
+  const { isAuthenticated, loading, user } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -19,16 +19,22 @@ export default function ProtectedRoute({ children }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate replace to="/login" state={{ from: location }} />;
+    return <Navigate replace to={requiredRole === 'admin' ? '/admin/login' : '/login'} state={{ from: location }} />;
+  }
+
+  if (requiredRole && user?.role !== requiredRole) {
+    return <Navigate replace to={requiredRole === 'admin' ? '/admin/login' : '/'} state={{ from: location }} />;
   }
 
   return children || <Outlet />;
 }
 
 ProtectedRoute.propTypes = {
-  children: PropTypes.node
+  children: PropTypes.node,
+  requiredRole: PropTypes.string
 };
 
 ProtectedRoute.defaultProps = {
-  children: null
+  children: null,
+  requiredRole: ''
 };
