@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
+import { useLocation } from 'react-router-dom';
 import { sendMessage } from '../../api/chatApi';
+import { getPlaceById } from '../../api/placeApi';
 import { extractData, extractMessage } from '../../api/responseUtils';
+import { useLocationContext } from '../../context/LocationContext';
 import ChatMessage from './ChatMessage';
 import Loader from '../common/Loader';
 
@@ -14,17 +17,28 @@ const QUICK_ACTIONS = [
   'Trek difficulty'
 ];
 
+function buildWelcomeMessage(place) {
+  if (!place) {
+    return 'Ask about nearby places, routes, budgets, or the current landmark.';
+  }
+
+  return `Welcome to TourVision.\n\nYou are currently exploring ${place.name || 'this place'}.\n\nI can help you with its history, architecture, nearby attractions, hotels, restaurants, transport, weather, trekking information, photography spots and can even generate a personalized trip plan based on your budget.`;
+}
+
 /**
  * Floating global AI chat surface with contextual place-aware messaging.
  */
 export default function ChatWindow({ contextPlaceId, isOpen, onClose }) {
+  const routeLocation = useLocation();
+  const { location } = useLocationContext();
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [contextPlace, setContextPlace] = useState(null);
   const [messages, setMessages] = useState([
     {
       id: 'welcome',
       role: 'assistant',
-      content: 'Ask about nearby places, routes, budgets, or the current landmark.'
+      content: buildWelcomeMessage(null)
     }
   ]);
   const streamTimerRef = useRef(null);
@@ -62,6 +76,85 @@ export default function ChatWindow({ contextPlaceId, isOpen, onClose }) {
   }, [contextPlaceId]);
 
   useEffect(() => () => window.clearInterval(streamTimerRef.current), []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!contextPlaceId) {
+      setContextPlace(null);
+      return undefined;
+    }
+
+    getPlaceById(contextPlaceId)
+      .then((response) => {
+        if (!isMounted) {
+          return;
+        }
+
+        const data = extractData(response);
+        setContextPlace(data?.place || data || null);
+      })
+      .catch(() => {
+        if (isMounted) {
+          setContextPlace(null);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [contextPlaceId]);
+
+  useEffect(() => {
+    if (!contextPlaceId || !contextPlace) {
+      return;
+    }
+
+    setMessages((current) => {
+      if (current.length !== 1 || current[0]?.id !== 'welcome') {
+        return current;
+      }
+
+      return [
+        {
+          id: 'welcome',
+          role: 'assistant',
+          content: buildWelcomeMessage(contextPlace)
+        }
+      ];
+    });
+  }, [contextPlace, contextPlaceId]);
+
+  const buildSelectedPlacePayload = () => {
+    if (!contextPlace) {
+      return undefined;
+    }
+
+    const coordinates = contextPlace.location?.coordinates || contextPlace.coordinates;
+    const latitude = contextPlace.latitude ?? contextPlace.lat ?? coordinates?.lat ?? coordinates?.[1];
+    const longitude = contextPlace.longitude ?? contextPlace.lng ?? coordinates?.lng ?? coordinates?.[0];
+
+    return {
+      id: contextPlace.place_id || contextPlace.id || contextPlace._id || contextPlace.slug || contextPlaceId,
+      name: contextPlace.name,
+      latitude,
+      longitude,
+      district: contextPlace.district || contextPlace.city || contextPlace.location_name || '',
+      state: contextPlace.state || '',
+      category: contextPlace.category || contextPlace.best_for || '',
+      timings: contextPlace.timings || contextPlace.hours || '',
+      entry_fee: contextPlace.entry_fee ?? contextPlace.price ?? 0,
+      historical_summary:
+        contextPlace.ai_content?.overview ||
+        contextPlace.ai_content?.summary ||
+        contextPlace.historical_importance_en ||
+        contextPlace.historical_importance ||
+        contextPlace.history ||
+        contextPlace.description_en ||
+        contextPlace.description ||
+        ''
+    };
+  };
 
   const streamReply = (text) => {
     const replyId = `assistant-${Date.now()}`;
@@ -102,10 +195,22 @@ export default function ChatWindow({ contextPlaceId, isOpen, onClose }) {
     setLoading(true);
 
     try {
+      const currentPage = contextPlaceId || routeLocation.pathname.startsWith('/place/') ? 'Place' : 'Home';
       const response = await sendMessage({
         message: outgoingMessage,
         place_id: contextPlaceId || undefined,
-        geofence_zone: 'general'
+        selected_place: buildSelectedPlacePayload(),
+        geofence_zone: 'general',
+        current_page: currentPage,
+        user_location: location
+          ? {
+              latitude: location.lat,
+              longitude: location.lng,
+              city: location.city || '',
+              state: location.state || '',
+              accuracy: location.accuracy
+            }
+          : undefined
       });
       const data = extractData(response);
 

@@ -3,6 +3,8 @@ require("dotenv").config();
 
 const asyncHandler = require("../utils/asyncHandler");
 const {
+  cleanAiDisplayText,
+  generateAiGuideReply,
   getGeminiApiKey,
   getGeminiModel,
   logGeminiError,
@@ -47,7 +49,7 @@ router.get("/test-gemini", async (req, res) => {
     const model = getGeminiModel();
     const prompt = "Say hello";
     const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    const text = cleanAiDisplayText(result.response.text());
 
     return res.json({ text });
   } catch (err) {
@@ -62,25 +64,28 @@ router.get("/test-gemini", async (req, res) => {
 router.post(
   "/ai-guide",
   asyncHandler(async (req, res) => {
-    const { place_name: placeName, message } = req.body || {};
+    const {
+      current_page: currentPage = "Home",
+      place_name: placeName,
+      message,
+      selected_place: selectedPlace,
+      user_location: userLocation
+    } = req.body || {};
 
-    if (!placeName || !message) {
-      return res.status(400).json({ message: "place_name and message are required." });
+    if (!message) {
+      return res.status(400).json({ message: "message is required." });
     }
-
-    const prompt = `You are a smart travel guide.
-
-Place: ${placeName}
-User query: ${message}
-
-Give helpful, short, engaging response.`;
 
     let text = "";
 
     try {
-      const model = getGeminiModel();
-      const result = await model.generateContent(prompt);
-      text = result.response.text().trim();
+      const result = await generateAiGuideReply({
+        currentPage,
+        userLocation,
+        selectedPlace: selectedPlace || (placeName ? { name: placeName } : null),
+        message
+      });
+      text = result.text;
     } catch (err) {
       const publicError = err.publicMessage
         ? { statusCode: err.statusCode || 503, message: err.publicMessage }

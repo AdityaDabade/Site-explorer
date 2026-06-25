@@ -291,8 +291,8 @@ AlertIcon.propTypes = {
   type: PropTypes.string.isRequired
 };
 
-function SmartAlertsPanel({ geofenceState, place }) {
-  const { data: weather, loading: weatherLoading, error: weatherError } = usePlaceWeather(place);
+function SmartAlertsPanel({ geofenceState, place, weatherState }) {
+  const { data: weather, loading: weatherLoading, error: weatherError } = weatherState;
   const alerts = useMemo(() => buildSmartAlerts(place, weather), [place, weather]);
   const isInside = geofenceState?.status === 'inside';
   const isNear = geofenceState?.status === 'near';
@@ -400,7 +400,12 @@ SmartAlertsPanel.propTypes = {
     name: PropTypes.string,
     place_id: PropTypes.string,
     slug: PropTypes.string
-  })
+  }),
+  weatherState: PropTypes.shape({
+    data: PropTypes.object,
+    error: PropTypes.string,
+    loading: PropTypes.bool
+  }).isRequired
 };
 
 SmartAlertsPanel.defaultProps = {
@@ -430,6 +435,58 @@ function getPlaceLocation(place) {
   }
 
   return { lat, lng };
+}
+
+function joinTextParts(parts) {
+  return parts
+    .flat()
+    .filter((part) => typeof part === 'string' && part.trim())
+    .map((part) => part.trim())
+    .join('. ');
+}
+
+function buildCompleteHeritageNarration(place, language = 'en') {
+  const fee = Number(place?.entry_fee || place?.price || 0);
+  const facts = language === 'mr' ? place?.facts_mr : place?.facts_en || place?.facts;
+  const aiFacts = place?.ai_content?.hidden_facts || place?.ai_content?.facts || [];
+
+  if (language === 'mr') {
+    return joinTextParts([
+      `${place?.name || 'हे ठिकाण'} याबद्दल संपूर्ण वारसा मार्गदर्शन`,
+      place?.description_mr || place?.description_en || place?.description,
+      place?.historical_importance_mr || place?.historical_importance_en || place?.history,
+      place?.architecture ? `वास्तुकला: ${place.architecture}` : '',
+      place?.built_year ? `बांधकाम काळ: ${place.built_year}` : '',
+      place?.builder ? `निर्माता: ${place.builder}` : '',
+      place?.dynasty ? `राजवंश: ${place.dynasty}` : '',
+      place?.category ? `प्रकार: ${place.category}` : '',
+      place?.district || place?.state ? `स्थान: ${[place?.district, place?.state].filter(Boolean).join(', ')}` : '',
+      place?.timings || place?.hours ? `वेळ: ${place.timings || place.hours}` : '',
+      `प्रवेश शुल्क: ${fee > 0 ? `रुपये ${fee}` : 'मोफत किंवा उपलब्ध नाही'}`,
+      place?.best_time_to_visit ? `भेट देण्याची उत्तम वेळ: ${place.best_time_to_visit}` : '',
+      place?.estimated_visit_duration ? `अंदाजे भेट कालावधी: ${place.estimated_visit_duration}` : '',
+      Array.isArray(facts) && facts.length ? `महत्त्वाची तथ्ये: ${facts.join('. ')}` : '',
+      Array.isArray(aiFacts) && aiFacts.length ? `अधिक माहिती: ${aiFacts.join('. ')}` : ''
+    ]);
+  }
+
+  return joinTextParts([
+    `Complete heritage guide for ${place?.name || 'this place'}`,
+    place?.description_en || place?.description,
+    place?.historical_importance_en || place?.history || place?.ai_content?.history,
+    place?.architecture ? `Architecture: ${place.architecture}` : '',
+    place?.built_year ? `Built year: ${place.built_year}` : '',
+    place?.builder ? `Builder: ${place.builder}` : '',
+    place?.dynasty ? `Dynasty: ${place.dynasty}` : '',
+    place?.category ? `Category: ${place.category}` : '',
+    place?.district || place?.state ? `Location: ${[place?.district, place?.state].filter(Boolean).join(', ')}` : '',
+    place?.timings || place?.hours ? `Timings: ${place.timings || place.hours}` : '',
+    `Entry fee: ${fee > 0 ? `Rs ${fee}` : 'free or not listed'}`,
+    place?.best_time_to_visit ? `Best time to visit: ${place.best_time_to_visit}` : '',
+    place?.estimated_visit_duration ? `Estimated visit duration: ${place.estimated_visit_duration}` : '',
+    Array.isArray(facts) && facts.length ? `Key facts: ${facts.join('. ')}` : '',
+    Array.isArray(aiFacts) && aiFacts.length ? `Additional guide notes: ${aiFacts.join('. ')}` : ''
+  ]);
 }
 
 const createGuideSections = (place) => {
@@ -522,6 +579,7 @@ export default function PlacePage() {
   const [serverGeofenceState, setServerGeofenceState] = useState(null);
   const [captions, setCaptions] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [activeGuideSectionId, setActiveGuideSectionId] = useState('overview');
   const [speechSupported] = useState(
     () => typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window
@@ -571,6 +629,7 @@ export default function PlacePage() {
   }, [aiContent?.images, place]);
   const score = Number(place?.score || place?.rating || 9.4).toFixed(1);
   const price = Number(place?.price || place?.entry_fee || 0);
+  const weatherState = usePlaceWeather(place);
   const guideData = useMemo(() => createGuideSections(place), [place]);
   const activeGuideSection = useMemo(
     () => guideData.sections.find((section) => section.id === activeGuideSectionId) || guideData.sections[0],
@@ -578,7 +637,7 @@ export default function PlacePage() {
   );
 
   const speak = useCallback(
-    (text) => {
+    (text, language = 'en-IN') => {
       if (!text) {
         return;
       }
@@ -591,22 +650,31 @@ export default function PlacePage() {
 
       try {
         window.speechSynthesis.cancel();
+        setIsPaused(false);
 
         const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'en-IN';
+        u.lang = language;
         u.rate = 0.95;
         u.pitch = 1;
 
         const voices = window.speechSynthesis.getVoices();
         if (voices.length) {
-          u.voice = voices.find((voice) => voice.lang === 'en-IN') || voices[0];
+          u.voice =
+            voices.find((voice) => voice.lang === language) ||
+            voices.find((voice) => voice.lang?.startsWith(language.split('-')[0])) ||
+            voices.find((voice) => voice.lang === 'en-IN') ||
+            voices[0];
         }
 
         u.onstart = () => setIsSpeaking(true);
-        u.onend = () => setIsSpeaking(false);
+        u.onend = () => {
+          setIsSpeaking(false);
+          setIsPaused(false);
+        };
         u.onerror = (event) => {
           console.error('Speech failed:', event.error || event);
           setIsSpeaking(false);
+          setIsPaused(false);
           toast.error('Voice playback failed');
         };
 
@@ -632,8 +700,36 @@ export default function PlacePage() {
     if (speechSupported) {
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
+      setIsPaused(false);
     }
   }, [speechSupported]);
+
+  const handlePauseNarration = useCallback(() => {
+    if (speechSupported && window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+      window.speechSynthesis.pause();
+      setIsPaused(true);
+    }
+  }, [speechSupported]);
+
+  const handleResumeNarration = useCallback(() => {
+    if (speechSupported && window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+      setIsPaused(false);
+      setIsSpeaking(true);
+    }
+  }, [speechSupported]);
+
+  const handleListenEnglish = useCallback(() => {
+    const narration = buildCompleteHeritageNarration(place, 'en');
+    setCaptions(narration);
+    speak(narration, 'en-IN');
+  }, [place, speak]);
+
+  const handleListenMarathi = useCallback(() => {
+    const narration = buildCompleteHeritageNarration(place, 'mr');
+    setCaptions(narration);
+    speak(narration, 'mr-IN');
+  }, [place, speak]);
 
   useEffect(() => {
     if (!speechSupported) {
@@ -646,6 +742,7 @@ export default function PlacePage() {
     return () => {
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
+      setIsPaused(false);
     };
   }, [speechSupported]);
 
@@ -816,22 +913,23 @@ export default function PlacePage() {
     (section) => {
       setActiveGuideSectionId(section.id);
       setCaptions(section.content);
-      speak(section.content);
     },
-    [speak]
+    []
   );
 
-  // Starts the structured guide with the first predefined section.
+  // Opens the structured guide without starting speech synthesis.
   const handleStartTour = useCallback(() => {
     const firstSection = guideData.sections[0];
     setGuideLoading(false);
     setActiveTab('AI Guide');
-    handleGuideSectionSelect(firstSection);
-    toast.success('Voice guide started.');
-  }, [guideData.sections, handleGuideSectionSelect]);
+    if (firstSection) {
+      setActiveGuideSectionId(firstSection.id);
+      setCaptions(firstSection.content);
+    }
+  }, [guideData.sections]);
 
   useEffect(() => {
-    const handleGlobalGuideStart = (event) => {
+    const handleGlobalGuideOpen = (event) => {
       const payloadPlaceId = event.detail?.placeId || event.detail?.place_id;
       if (payloadPlaceId && String(payloadPlaceId) !== String(id)) {
         return;
@@ -840,8 +938,8 @@ export default function PlacePage() {
       handleStartTour();
     };
 
-    window.addEventListener('tourvision:start-ai-guide', handleGlobalGuideStart);
-    return () => window.removeEventListener('tourvision:start-ai-guide', handleGlobalGuideStart);
+    window.addEventListener('tourvision:open-ai-guide', handleGlobalGuideOpen);
+    return () => window.removeEventListener('tourvision:open-ai-guide', handleGlobalGuideOpen);
   }, [handleStartTour, id]);
 
   // Loading state
@@ -998,7 +1096,7 @@ export default function PlacePage() {
               )}
             </div>
 
-            <SmartAlertsPanel geofenceState={geofenceState} place={place} />
+            <SmartAlertsPanel geofenceState={geofenceState} place={place} weatherState={weatherState} />
 
             <PlaceTabs activeTab={activeTab} setActiveTab={setActiveTab} tabs={TABS} />
 
@@ -1010,13 +1108,19 @@ export default function PlacePage() {
                 activeSectionId={activeGuideSectionId}
                 captions={captions}
                 guideData={guideData}
+                isPaused={isPaused}
                 isSpeaking={isSpeaking}
+                onListenEnglish={handleListenEnglish}
+                onListenMarathi={handleListenMarathi}
+                onPauseNarration={handlePauseNarration}
                 onPlayNarration={handlePlayNarration}
                 onReplayNarration={handleReplayNarration}
+                onResumeNarration={handleResumeNarration}
                 onSectionSelect={handleGuideSectionSelect}
-                onStartTour={handleStartTour}
                 onStopNarration={handleStopNarration}
+                place={place}
                 speechSupported={speechSupported}
+                weather={weatherState.data}
               />
             )}
 

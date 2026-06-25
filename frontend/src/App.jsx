@@ -234,7 +234,7 @@ function AppFrame() {
           onClick={() => {
             if (contextPlaceId) {
               window.dispatchEvent(
-                new CustomEvent('tourvision:start-ai-guide', {
+                new CustomEvent('tourvision:open-ai-guide', {
                   detail: { placeId: contextPlaceId }
                 })
               );
