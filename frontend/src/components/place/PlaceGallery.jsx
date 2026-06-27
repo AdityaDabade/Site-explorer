@@ -14,12 +14,12 @@ export default function PlaceGallery({ gallery, locationName, mobileGallery, onS
 
   return (
     <motion.section
-      className="overflow-hidden rounded-3xl shadow-2xl shadow-slate-950/20"
+      className="place-gallery-hero"
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8 }}
     >
-      <div className="group relative h-[350px] w-full overflow-hidden rounded-3xl lg:h-[500px]">
+      <div className="group relative h-[350px] w-full overflow-hidden rounded-[inherit] lg:h-[500px]">
         <motion.img
           alt={placeName}
           animate={{ scale: [1.03, 1.06, 1.03] }}
@@ -28,7 +28,7 @@ export default function PlaceGallery({ gallery, locationName, mobileGallery, onS
           className="h-full w-full scale-[1.03] object-cover transition-transform duration-700 lg:group-hover:scale-[1.08]"
           src={primaryImage}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-black/5" />
 
         <div className="absolute left-4 top-4 flex max-w-[calc(100%-2rem)] flex-wrap items-center gap-2 rounded-full border border-white/30 bg-white/20 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-black/20 backdrop-blur-md sm:left-6 sm:top-6">
           <span className="max-w-[13rem] truncate sm:max-w-none">📍 {locationName}</span>
@@ -37,14 +37,14 @@ export default function PlaceGallery({ gallery, locationName, mobileGallery, onS
         </div>
 
         <div className="absolute bottom-6 left-5 right-5 pr-24 text-white sm:bottom-8 sm:left-8 sm:right-8">
-          <h1 className="max-w-3xl text-4xl font-bold leading-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.55)] sm:text-5xl lg:text-6xl">
+          <h1 className="max-w-3xl text-4xl font-black leading-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.55)] sm:text-5xl lg:text-6xl">
             {placeName}
           </h1>
         </div>
 
         <button
           type="button"
-          className="absolute bottom-5 right-5 rounded-full bg-gradient-to-r from-teal-400 via-cyan-400 to-sky-500 px-5 py-3 text-sm font-bold text-slate-950 shadow-xl shadow-cyan-950/30 transition duration-300 hover:scale-105 hover:shadow-2xl focus:outline-none focus:ring-2 focus:ring-white/80 sm:bottom-8 sm:right-8 sm:px-6"
+          className="absolute bottom-5 right-5 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 shadow-xl shadow-slate-950/25 transition duration-300 hover:-translate-y-0.5 hover:bg-teal-50 focus:outline-none focus:ring-2 focus:ring-white/80 sm:bottom-8 sm:right-8 sm:px-6"
           onClick={onStartGuide}
         >
           🎧 AI Guide

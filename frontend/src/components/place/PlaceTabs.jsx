@@ -5,17 +5,17 @@ import PropTypes from 'prop-types';
  */
 export default function PlaceTabs({ activeTab, setActiveTab, tabs }) {
   return (
-    <div className="overflow-x-auto border-b border-[var(--c-border)]">
-      <div className="flex min-w-max gap-6">
+    <div className="place-tabs no-scrollbar overflow-x-auto">
+      <div className="flex min-w-max gap-2">
         {tabs.map((tab) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            className={`border-b-2 px-1 pb-4 pt-2 font-semibold transition ${
+            className={`place-tab-button ${
               activeTab === tab
-                ? 'border-[var(--c-text-primary)] text-[var(--c-text-primary)]'
-                : 'border-transparent text-[var(--c-text-secondary)]'
+                ? 'place-tab-button-active'
+                : 'text-slate-600 hover:text-slate-950'
             }`}
           >
             {tab}

@@ -19,7 +19,6 @@ const DEFAULT_RADIUS_KM = 100;
 const FILTER_CHIPS = [
   "All",
   "Top Rated",
-  "AR",
   "Free Entry",
   "Nearest",
 ];
@@ -338,9 +337,8 @@ function PlaceListCard({
   );
   const rating = Number(place.rating || 4.8).toFixed(1);
   const price = Number(place.price || place.entry_fee || 0);
-  const hasAr = Boolean(place.has_ar || place.ar_model_url);
   const hasAi = Boolean(
-    place.has_ai_content || place.ai_content_available || place.has_ar || true,
+    place.has_ai_content || place.ai_content_available || true,
   );
   const travelTime = formatDuration(
     Number.isFinite(Number(place.durationMin))
@@ -398,11 +396,6 @@ function PlaceListCard({
             {hasAi ? (
               <span className="rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-bold text-teal-700">
                 AI Guide
-              </span>
-            ) : null}
-            {hasAr ? (
-              <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700">
-                AR
               </span>
             ) : null}
             {price === 0 ? (
@@ -464,13 +457,11 @@ PlaceListCard.propTypes = {
   onShowRoute: PropTypes.func.isRequired,
   place: PropTypes.shape({
     ai_content_available: PropTypes.bool,
-    ar_model_url: PropTypes.string,
     distance: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     distanceLabel: PropTypes.string,
     durationMin: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     entry_fee: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     has_ai_content: PropTypes.bool,
-    has_ar: PropTypes.bool,
     image: PropTypes.string,
     images: PropTypes.arrayOf(PropTypes.string),
     location_name: PropTypes.string,
@@ -621,8 +612,6 @@ export default function NearbyPage() {
 
     if (activeChip === "Top Rated") {
       filtered.sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
-    } else if (activeChip === "AR") {
-      filtered = filtered.filter((place) => place.has_ar);
     } else if (activeChip === "Free Entry") {
       filtered = filtered.filter(
         (place) => Number(place.price || place.entry_fee || 0) === 0,
@@ -840,7 +829,7 @@ export default function NearbyPage() {
                 Explore Nearby Heritage Places
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                Discover nearby heritage places with routes, ratings, AR,
+                Discover nearby heritage places with routes, ratings,
                 AI guidance, and directions.
               </p>
             </div>

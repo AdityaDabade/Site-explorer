@@ -204,7 +204,6 @@ export default function Navbar({ onChatOpen = () => {}, onMenuToggle = () => {},
                 >
                   AI Guide
                 </button>
-
                 {isAuthenticated ? (
                   <>
                     <div className="border-y border-[var(--c-border)] px-4 py-3">

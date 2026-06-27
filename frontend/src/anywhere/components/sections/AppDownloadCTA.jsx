@@ -36,14 +36,14 @@ export default function AppDownloadCTA() {
                   <div className="mt-4 rounded-[18px] bg-[var(--c-teal-light)] p-4">
                     <p className="text-sm font-semibold">Explore Nearby</p>
                     <p className="mt-1 text-xs text-[var(--c-text-secondary)]">
-                      AR tours · audio guides · saved trips
+                      audio guides · saved trips
                     </p>
                   </div>
                   <div className="mt-4 space-y-3">
                     <div className="rounded-[16px] bg-white p-3 shadow-[var(--shadow-card)]">
                       <p className="text-sm font-semibold">Amber Fort</p>
                       <p className="text-xs text-[var(--c-text-secondary)]">
-                        AR Ready · 2.1 km away
+                        Audio guide · 2.1 km away
                       </p>
                     </div>
                     <div className="rounded-[16px] bg-white p-3 shadow-[var(--shadow-card)]">

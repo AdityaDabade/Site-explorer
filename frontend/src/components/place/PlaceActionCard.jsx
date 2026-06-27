@@ -49,7 +49,7 @@ export default function PlaceActionCard({
   const canRenderMap = placeCenter && Number.isFinite(placeCenter.lat) && Number.isFinite(placeCenter.lng);
 
   return (
-    <div className="sticky top-[110px] rounded-[var(--r-xl)] border border-[var(--c-border)] bg-white p-7 shadow-[var(--shadow-card)]">
+    <div className="place-action-card sticky top-[110px]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <span className="score-bubble">{score}</span>
@@ -65,7 +65,7 @@ export default function PlaceActionCard({
         </button>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
         <div className="p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -79,13 +79,13 @@ export default function PlaceActionCard({
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
-            <div className="rounded-lg bg-white p-3">
+            <div className="rounded-xl bg-white p-3 shadow-sm">
               <p className="text-xs font-bold text-slate-500">Distance</p>
               <p className="mt-1 text-sm font-black text-slate-950">
                 {formatDistanceMeters(geofenceState?.distanceMeters)}
               </p>
             </div>
-            <div className="rounded-lg bg-white p-3">
+            <div className="rounded-xl bg-white p-3 shadow-sm">
               <p className="text-xs font-bold text-slate-500">Radius</p>
               <p className="mt-1 text-sm font-black text-slate-950">
                 {Math.round(geofenceState?.radiusMeters || 200)} m
@@ -113,7 +113,7 @@ export default function PlaceActionCard({
         ) : null}
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
         <p className="text-sm text-[var(--c-text-secondary)]">Price</p>
         <p className="mt-1 text-2xl font-bold">
           {price === 0 ? 'Free Entry' : `Rs ${price}/person`}

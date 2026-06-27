@@ -15,7 +15,6 @@ export default function PlaceCard({ meta, onSelect, place }) {
   const distance = place.distance ? `${Number(place.distance).toFixed(1)} km` : 'Nearby';
   const score = Number(place.score || 8.9).toFixed(1);
   const price = Number(place.price || place.entry_fee || 0);
-  const hasAr = Boolean(place.has_ar || place.ar_model_url);
   const locationLabel =
     place.location_name ||
     place.city ||
@@ -56,7 +55,6 @@ export default function PlaceCard({ meta, onSelect, place }) {
 
         <div className="mt-2 flex flex-wrap gap-2">
           <span className="badge badge-neutral">{place.category || place.type || 'Experience'}</span>
-          {hasAr ? <span className="badge badge-teal">AR Available</span> : null}
         </div>
 
         <div className="mt-2 text-[13px] text-[var(--c-text-secondary)]">
@@ -78,12 +76,10 @@ PlaceCard.propTypes = {
   meta: PropTypes.string,
   onSelect: PropTypes.func,
   place: PropTypes.shape({
-    ar_model_url: PropTypes.string,
     category: PropTypes.string,
     city: PropTypes.string,
     distance: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     entry_fee: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-    has_ar: PropTypes.bool,
     image: PropTypes.string,
     images: PropTypes.arrayOf(PropTypes.string),
     location: PropTypes.string,

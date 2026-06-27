@@ -87,7 +87,7 @@ function readServices(response) {
 
 function ServiceCard({ service }) {
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-[var(--shadow-card)] transition hover:border-teal-200 hover:shadow-md">
+    <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[var(--shadow-card)] transition hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-[0.12em] text-teal-700">
@@ -241,13 +241,13 @@ export default function PlaceNearbyTab({ placeLocation }) {
   const visibleServices = groupedServices[activeTab] || [];
 
   return (
-    <section className="space-y-5">
+    <section className="place-tab-surface space-y-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-[var(--c-text-secondary)]">
+          <p className="place-section-kicker">
             Nearby Services
           </p>
-          <h3 className="mt-1 text-xl font-bold text-slate-900">
+          <h3 className="mt-1 text-2xl font-black text-slate-950">
             Nearby Services Around This Place
           </h3>
         </div>
@@ -257,7 +257,7 @@ export default function PlaceNearbyTab({ placeLocation }) {
           <select
             value={radiusKm}
             onChange={(event) => setRadiusKm(Number(event.target.value))}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10"
           >
             <option value={5}>5 km</option>
             <option value={10}>10 km</option>
@@ -267,7 +267,7 @@ export default function PlaceNearbyTab({ placeLocation }) {
         </label>
       </div>
 
-      <div className="no-scrollbar flex gap-2 overflow-x-auto border-b border-[var(--c-border)] pb-3">
+      <div className="no-scrollbar flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-2">
         {SERVICE_TABS.map((tab) => (
           <button
             key={tab.key}
@@ -275,7 +275,7 @@ export default function PlaceNearbyTab({ placeLocation }) {
             className={[
               "whitespace-nowrap rounded-full px-4 py-2 text-sm font-extrabold transition",
               activeTab === tab.key
-                ? "bg-slate-950 text-white"
+                ? "bg-slate-950 text-white shadow-sm"
                 : "border border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:text-teal-700",
             ].join(" ")}
             onClick={() => setActiveTab(tab.key)}

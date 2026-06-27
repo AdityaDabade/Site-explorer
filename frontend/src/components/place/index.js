@@ -1,9 +1,9 @@
 export { default as PlaceGallery } from './PlaceGallery';
 export { default as PlaceHeader } from './PlaceHeader';
 export { default as PlaceOverviewTab } from './PlaceOverviewTab';
-export { default as PlaceARTourTab } from './PlaceARTourTab';
 export { default as PlaceAIGuideTab } from './PlaceAIGuideTab';
 export { default as PlaceNearbyTab } from './PlaceNearbyTab';
 export { default as PlaceTabs } from './PlaceTabs';
 export { default as PlaceActionCard } from './PlaceActionCard';
+export { default as PlaceReviewPanel } from './PlaceReviewPanel';
 export { default as PlaceMobileActionBar } from './PlaceMobileActionBar';

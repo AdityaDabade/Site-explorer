@@ -14,6 +14,11 @@ const feedbackSchema = new mongoose.Schema(
       ref: "User",
       default: null
     },
+    name: {
+      type: String,
+      default: "",
+      trim: true
+    },
     rating: {
       type: Number,
       required: true,

@@ -29,7 +29,6 @@ export function normalizePlace(place, index) {
     review_count: place.review_count || place.reviews || 1200 + index * 117,
     price: Number(place.price || place.entry_fee || 0),
     free_entry: Number(place.price || place.entry_fee || 0) === 0,
-    has_ar: Boolean(place.has_ar || place.ar_model_url),
     image: resolvePlaceImage(place, FALLBACK_PLACES[index % FALLBACK_PLACES.length].image),
     score: Number(place.score || 8.7 + (index % 5) * 0.2).toFixed(1),
     region:

@@ -14,10 +14,6 @@ const aiContentSchema = new mongoose.Schema(
       type: [String],
       default: []
     },
-    ar_model_url: {
-      type: String,
-      default: ""
-    },
     tts_audio: {
       type: String,
       default: ""
@@ -217,14 +213,6 @@ const placeSchema = new mongoose.Schema(
     videos: {
       type: [String],
       default: []
-    },
-    has_ar: {
-      type: Boolean,
-      default: false
-    },
-    ar_model_url: {
-      type: String,
-      default: ""
     },
     qr_stats: {
       total_scans: {

@@ -49,11 +49,6 @@ function PlaceCard({ place, isSaved, onOpen, onToggleSave }) {
 
         {/* Top-left badges */}
         <div className="absolute left-3 top-3 flex gap-2">
-          {place.has_ar && (
-            <span className="rounded-full bg-[var(--c-primary)] px-2.5 py-1 text-[11px] font-bold text-white">
-              AR
-            </span>
-          )}
           {place.free_entry && (
             <span className="rounded-full bg-[var(--c-success)] px-2.5 py-1 text-[11px] font-bold text-white">
               Free

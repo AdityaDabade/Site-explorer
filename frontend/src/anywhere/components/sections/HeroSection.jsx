@@ -54,7 +54,7 @@ export default function HeroSection({
             Incredible Places
           </h1>
           <p className="mt-4 max-w-[560px] text-lg text-white/85">
-            AI-powered tours, AR experiences, and smart trip planning
+            AI-powered tours, audio guides, and smart trip planning
           </p>
 
           <SearchBar

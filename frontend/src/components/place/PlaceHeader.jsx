@@ -8,13 +8,13 @@ export default function PlaceHeader({ place, badges }) {
   const price = Number(place?.price || place?.entry_fee || 0);
 
   return (
-    <div>
-      <div className="mb-5 flex items-center gap-2 text-sm text-[var(--c-text-secondary)]">
+    <div className="place-header">
+      <div className="mb-5 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-500">
         <Link to="/">Home</Link>
         <span>/</span>
         <Link to="/nearby">Explore</Link>
         <span>/</span>
-        <span className="text-[var(--c-text-primary)]">{place?.name}</span>
+        <span className="text-slate-900">{place?.name}</span>
       </div>
 
       <div>
@@ -23,8 +23,8 @@ export default function PlaceHeader({ place, badges }) {
           <span className="badge badge-green">{price === 0 ? 'Free Entry' : `Rs ${price} / person`}</span>
         </div>
 
-        <h1 className="mt-4">{place?.name}</h1>
-        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[var(--c-text-secondary)]">
+        <h1 className="mt-4 max-w-4xl text-slate-950">{place?.name}</h1>
+        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-600">
           <span>{place?.location_name || place?.location || place?.city || 'TourVision destination'}</span>
           <span>•</span>
           <span>{'\u2605'} {Number(place?.rating || 4.8).toFixed(1)}</span>

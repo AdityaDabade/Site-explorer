@@ -17,8 +17,8 @@ export const CATEGORIES = [
     image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&auto=format&fit=crop&q=80',
   },
   {
-    title: 'AR Experiences',
-    image: 'https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=600&auto=format&fit=crop&q=80',
+    title: 'Audio Guides',
+    image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop&q=80',
   },
   {
     title: 'Cultural Sites',
@@ -37,8 +37,8 @@ export const COLLECTIONS = [
     image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=600&auto=format&fit=crop&q=80',
   },
   {
-    title: 'AR-Ready Monuments',
-    count: '14 immersive tours',
+    title: 'AI-Guided Monuments',
+    count: '14 narrated tours',
     image: 'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=600&auto=format&fit=crop&q=80',
   },
   {
@@ -60,14 +60,14 @@ export const COLLECTIONS = [
 
 export const FEATURE_ROWS = [
   {
-    badge: 'AUGMENTED REALITY',
-    title: 'Step Inside History',
-    body: 'Bring ruins, plazas, forts, and galleries to life with scene-aware overlays that tell richer stories the moment you arrive.',
-    cta: 'Try AR Tour',
+    badge: 'QR DISCOVERY',
+    title: 'Unlock Stories On Site',
+    body: 'Scan heritage codes, open place pages instantly, and continue with guide sections, captions, and narration the moment you arrive.',
+    cta: 'Scan a Place',
     image: 'https://images.unsplash.com/photo-1562774053-701939374585?w=800&auto=format&fit=crop',
     bullets: [
-      '3D reconstructions over real landmarks',
-      'Guided camera checkpoints',
+      'Fast QR place lookup',
+      'Guided heritage sections',
       'Captions and narration in sync',
     ],
   },
@@ -97,33 +97,6 @@ export const FEATURE_ROWS = [
   },
 ];
 
-export const REVIEW_CARDS = [
-  {
-    name: 'Aditi',
-    region: 'India',
-    date: 'March 2026',
-    title: 'Best city guide we used this year',
-    text: 'The AR layer at the fort completely changed the experience. We understood the place in minutes and the route suggestions were spot on.',
-    place: 'Amber Fort',
-  },
-  {
-    name: 'Luca',
-    region: 'Italy',
-    date: 'February 2026',
-    title: 'Felt like a local companion',
-    text: 'The app balanced maps, narration, and discovery really well. It was clean, fast, and surprisingly helpful when we changed plans.',
-    place: 'Jaipur Old City',
-  },
-  {
-    name: 'Maya',
-    region: 'United States',
-    date: 'January 2026',
-    title: 'Loved the stress-free planning',
-    text: 'We used TourVision for places, route planning, and trip splitting. Everything felt polished and easy to trust.',
-    place: 'Gateway of India',
-  },
-];
-
 export const FALLBACK_PLACES = [
   {
     id: 1,
@@ -137,7 +110,6 @@ export const FALLBACK_PLACES = [
     review_count: 2341,
     price: 0,
     free_entry: true,
-    has_ar: true,
     image: 'https://images.unsplash.com/photo-1477587458883-47145ed94245?w=900&auto=format&fit=crop&q=80',
     score: 9.1,
   },
@@ -153,7 +125,6 @@ export const FALLBACK_PLACES = [
     review_count: 1820,
     price: 0,
     free_entry: true,
-    has_ar: false,
     image: 'https://commons.wikimedia.org/wiki/Special:FilePath/Shaniwar_Wada_Pune.jpg?width=900',
     score: 8.9,
   },
@@ -169,7 +140,6 @@ export const FALLBACK_PLACES = [
     review_count: 3011,
     price: 300,
     free_entry: false,
-    has_ar: true,
     image: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=900&auto=format&fit=crop&q=80',
     score: 9.4,
   },
@@ -185,7 +155,6 @@ export const FALLBACK_PLACES = [
     review_count: 954,
     price: 0,
     free_entry: true,
-    has_ar: false,
     image: 'https://commons.wikimedia.org/wiki/Special:FilePath/Sinhagad-Fort.jpg?width=900',
     score: 8.8,
   },

@@ -43,7 +43,7 @@ function FeatureRow({ badge, title, body, cta, image, bullets, reverse }) {
 }
 
 /**
- * FeatureRowsSection — alternating feature highlights (AR, AI Guide, Planning).
+ * FeatureRowsSection - alternating feature highlights.
  */
 export default function FeatureRowsSection() {
   return (

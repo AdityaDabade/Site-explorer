@@ -278,9 +278,7 @@ const createPlace = asyncHandler(async (req, res) => {
     location,
     image: req.body.image || normalizeList(req.body.images)[0] || "",
     images: normalizeList(req.body.images),
-    videos: normalizeList(req.body.videos),
-    ar_model_url: req.body.ar_model_url || "",
-    has_ar: Boolean(req.body.ar_model_url)
+    videos: normalizeList(req.body.videos)
   });
 
   return success(res, { place: serializePlace(place) }, 201);
@@ -293,7 +291,7 @@ const updatePlace = asyncHandler(async (req, res) => {
     return failure(res, 404, "Place not found.");
   }
 
-  const fields = ["name", "description", "category", "city", "location_name", "image", "ar_model_url", "qr_id", "slug"];
+  const fields = ["name", "description", "category", "city", "location_name", "image", "qr_id", "slug"];
   fields.forEach((field) => {
     if (req.body[field] !== undefined) {
       place[field] = req.body[field];
@@ -312,8 +310,6 @@ const updatePlace = asyncHandler(async (req, res) => {
   if (req.body.videos !== undefined) {
     place.videos = normalizeList(req.body.videos);
   }
-
-  place.has_ar = Boolean(place.ar_model_url);
   await place.save();
   return success(res, { place: serializePlace(place) });
 });
@@ -397,7 +393,7 @@ const getFeedback = asyncHandler(async (req, res) => {
     feedback: feedback.map((item) => ({
       ...item.toJSON(),
       place_name: item.place?.name || "General",
-      user_name: item.user?.name || item.user?.email || "Guest"
+      user_name: item.user?.name || item.user?.email || item.name || "Guest"
     })),
     total: feedback.length
   });

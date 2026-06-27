@@ -9,11 +9,11 @@ import {
   PlaceGallery,
   PlaceHeader,
   PlaceOverviewTab,
-  PlaceARTourTab,
   PlaceAIGuideTab,
   PlaceNearbyTab,
   PlaceTabs,
   PlaceActionCard,
+  PlaceReviewPanel,
   PlaceMobileActionBar
 } from '../components/place';
 import { useLocationContext } from '../context/LocationContext';
@@ -22,7 +22,7 @@ import { useGeofence } from '../hooks/useGeofence';
 import { getGeofenceStatusForPlace } from '../utils/geoUtils';
 import { resolvePlaceImage } from '../utils/placeImages';
 
-const TABS = ['Overview', 'AI Guide', 'AR Tour', 'Nearby Services'];
+const TABS = ['Overview', 'AI Guide', 'Nearby Services'];
 const WEATHER_CODE_LABELS = {
   0: 'Clear sky',
   1: 'Mainly clear',
@@ -490,37 +490,81 @@ function buildCompleteHeritageNarration(place, language = 'en') {
 }
 
 const createGuideSections = (place) => {
+  const image = resolvePlaceImage(
+    place,
+    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop&q=80'
+  );
+  const normalizeSection = (section, index, source = 'section') => {
+    const title = section?.title || section?.name || section?.label || section?.heading;
+    const content =
+      section?.content ||
+      section?.body ||
+      section?.description ||
+      section?.summary ||
+      section?.overview ||
+      section?.details ||
+      '';
+
+    if (!title && !content) {
+      return null;
+    }
+
+    const baseId = title || source;
+
+    return {
+      id: section?.id || section?._id || section?.slug || `${String(baseId).toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${index}`,
+      title: title || `Heritage point ${index + 1}`,
+      content,
+      image: section?.image || section?.image_url || section?.thumbnail || section?.photo || image
+    };
+  };
+
   const managedSections = Array.isArray(place?.ai_sections)
     ? place.ai_sections
-        .filter((section) => section?.title || section?.body)
+        .filter((section) => section?.title || section?.name || section?.body || section?.content || section?.description)
         .sort((first, second) => Number(first.order || 0) - Number(second.order || 0))
     : [];
 
   if (managedSections.length) {
-    const image = resolvePlaceImage(
-      place,
-      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop&q=80'
-    );
-
     return {
       id: place?.place_id || place?._id || place?.id || 'current-place',
       image,
-      sections: managedSections.map((section, index) => ({
-        id: section.id || section._id || `${String(section.title || 'section').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${index}`,
-        title: section.title || `Section ${index + 1}`,
-        content: section.body || '',
-        image
-      }))
+      sections: managedSections.map((section, index) => normalizeSection(section, index, 'ai-section')).filter(Boolean)
     };
   }
 
   const managedContent = findPlaceContent(place?.place_id || place?.id || place?.slug || place?.name);
+  const backendSectionSources = [
+    place?.sections,
+    place?.sub_places,
+    place?.subPlaces,
+    place?.heritage_points,
+    place?.heritagePoints,
+    place?.points_of_interest,
+    place?.pointsOfInterest,
+    place?.monuments,
+    place?.landmarks
+  ].filter(Array.isArray);
+  const backendSections = backendSectionSources
+    .flat()
+    .map((section, index) => normalizeSection(section, index, 'heritage-point'))
+    .filter(Boolean);
 
-  if (managedContent) {
+  if (managedContent || backendSections.length) {
+    const sectionsById = new Map();
+
+    [...(managedContent?.sections || []), ...backendSections].forEach((section, index) => {
+      const normalized = normalizeSection(section, index, 'managed-section');
+
+      if (normalized && !sectionsById.has(String(normalized.id))) {
+        sectionsById.set(String(normalized.id), normalized);
+      }
+    });
+
     return {
-      id: managedContent.id,
-      image: managedContent.image,
-      sections: managedContent.sections
+      id: managedContent?.id || place?.place_id || place?._id || place?.id || 'current-place',
+      image: managedContent?.image || image,
+      sections: Array.from(sectionsById.values())
     };
   }
 
@@ -532,11 +576,6 @@ const createGuideSections = (place) => {
   const category = place?.category || 'landmark';
   const bestFor = place?.best_for || 'photography, short walks, and relaxed exploration';
   const hours = place?.hours ? ` Visiting hours are ${place.hours}.` : '';
-  const image =
-    resolvePlaceImage(
-      place,
-      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=900&auto=format&fit=crop&q=80'
-    );
 
   return {
     id: place?.place_id || place?._id || place?.id || 'current-place',
@@ -775,7 +814,7 @@ export default function PlacePage() {
         setPlace(nextPlace);
         const managedContent = clonePlaceContent(findPlaceContent(nextPlace?.place_id || nextPlace?.id || nextPlace?.slug || nextPlace?.name));
         if (managedContent) {
-          setPlace({ ...managedContent, ...nextPlace, sections: managedContent.sections });
+          setPlace({ ...managedContent, ...nextPlace, sections: nextPlace?.sections || managedContent.sections });
           setAiContent(managedContent.ai_content);
         }
 
@@ -973,13 +1012,12 @@ export default function PlacePage() {
   const badges = (
     <>
       <span className="badge badge-teal">AI Guide Available</span>
-      <span className="badge badge-orange">AR Experience</span>
     </>
   );
 
   return (
     <>
-      <div className="container py-8">
+      <div className="place-detail-shell container py-8">
         {/* Header and Gallery */}
         <PlaceHeader place={place} badges={badges} />
 
@@ -995,24 +1033,25 @@ export default function PlacePage() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="mt-8 grid gap-10 xl:grid-cols-[minmax(0,0.65fr)_minmax(320px,0.35fr)]">
+        <div className="place-detail-grid mt-8 grid gap-8">
           {/* Left Section - Tabs and Content */}
-          <section className="space-y-8">
-            <hr className="divider" />
+          <section className="space-y-7">
+            <hr className="place-soft-divider" />
 
-            <div className="card card-bordered p-5">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="voice-assistant-panel">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Voice Assistant</p>
-                  <p className="mt-1 text-sm text-[var(--c-text-secondary)]">
+                  <p className="place-section-kicker">Voice Assistant</p>
+                  <h2 className="mt-1 text-2xl font-black text-slate-950">Browse the audio guide</h2>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
                     {activeGuideSection ? `Current section: ${activeGuideSection.title}` : 'Choose a guide section.'}
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="voice-controls">
                   <button
                     type="button"
-                    className="btn-secondary btn-sm disabled:cursor-not-allowed disabled:opacity-50"
+                    className="voice-control-button disabled:cursor-not-allowed disabled:opacity-50"
                     onClick={handlePlayNarration}
                     disabled={!activeGuideSection || !speechSupported}
                   >
@@ -1020,7 +1059,7 @@ export default function PlacePage() {
                   </button>
                   <button
                     type="button"
-                    className="btn-secondary btn-sm disabled:cursor-not-allowed disabled:opacity-50"
+                    className="voice-control-button disabled:cursor-not-allowed disabled:opacity-50"
                     onClick={handleReplayNarration}
                     disabled={!activeGuideSection || !speechSupported}
                   >
@@ -1028,7 +1067,7 @@ export default function PlacePage() {
                   </button>
                   <button
                     type="button"
-                    className="btn-secondary btn-sm disabled:cursor-not-allowed disabled:opacity-50"
+                    className="voice-control-button disabled:cursor-not-allowed disabled:opacity-50"
                     onClick={handleStopNarration}
                     disabled={!speechSupported}
                   >
@@ -1037,7 +1076,7 @@ export default function PlacePage() {
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-3 md:grid-cols-3">
+              <div className="voice-section-rail mt-6">
                 {guideData.sections.map((section) => {
                   const active = section.id === activeGuideSectionId;
 
@@ -1046,13 +1085,9 @@ export default function PlacePage() {
                       key={section.id}
                       type="button"
                       onClick={() => handleGuideSectionSelect(section)}
-                      className={`group overflow-hidden rounded-xl border bg-white text-left shadow-[var(--shadow-card)] transition ${
-                        active
-                          ? 'border-teal-400 shadow-md shadow-teal-500/10'
-                          : 'border-[var(--c-border)] hover:border-teal-200'
-                      }`}
+                      className={`voice-section-card group ${active ? 'voice-section-card-active' : ''}`}
                     >
-                      <span className="relative block h-32 overflow-hidden">
+                      <span className="relative block h-36 overflow-hidden">
                         <img
                           alt={section.title}
                           className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
@@ -1064,13 +1099,16 @@ export default function PlacePage() {
                           }
                         />
                         <span className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-                        <span className="absolute bottom-3 left-3 right-3 text-sm font-bold text-white">
+                        <span className="voice-section-tag">
+                          {active ? 'Now playing' : 'Guide stop'}
+                        </span>
+                        <span className="absolute bottom-3 left-3 right-3 text-base font-black text-white">
                           {section.title}
                         </span>
                       </span>
                       <span className="block p-4">
-                        <span className="block line-clamp-2 text-sm leading-6 text-[var(--c-text-secondary)]">
-                        {section.content}
+                        <span className="block line-clamp-3 text-sm font-semibold leading-6 text-slate-600">
+                          {section.content}
                         </span>
                       </span>
                     </button>
@@ -1078,15 +1116,15 @@ export default function PlacePage() {
                 })}
               </div>
 
-              <div className="mt-4 max-h-44 overflow-y-auto rounded-xl border border-[var(--c-border)] bg-[var(--c-surface-inset)] p-4">
-                <p className="text-sm leading-6 text-[var(--c-text-secondary)]">
+              <div className="voice-caption-box mt-5">
+                <p className="text-sm font-semibold leading-7 text-slate-600">
                   {captions || activeGuideSection?.content || 'Choose a guide section to begin.'}
                 </p>
               </div>
 
               {isSpeaking && (
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <p className="text-sm font-semibold text-green-500 animate-pulse">AI is speaking...</p>
+                <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <p className="animate-pulse text-sm font-black text-emerald-700">AI is speaking...</p>
                   <div className="flex h-6 items-end gap-1">
                     <span className="h-2 w-1 bg-green-500 animate-bounce" />
                     <span className="h-4 w-1 bg-green-500 animate-bounce delay-100" />
@@ -1100,59 +1138,44 @@ export default function PlacePage() {
 
             <PlaceTabs activeTab={activeTab} setActiveTab={setActiveTab} tabs={TABS} />
 
-            {/* Tab Content */}
-            {activeTab === 'Overview' && <PlaceOverviewTab aiContent={aiContent} place={place} />}
+            <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(340px,360px)] xl:items-start">
+              <div>
+                {/* Tab Content */}
+                {activeTab === 'Overview' && <PlaceOverviewTab aiContent={aiContent} place={place} />}
 
-            {activeTab === 'AI Guide' && (
-              <PlaceAIGuideTab
-                activeSectionId={activeGuideSectionId}
-                captions={captions}
-                guideData={guideData}
-                isPaused={isPaused}
-                isSpeaking={isSpeaking}
-                onListenEnglish={handleListenEnglish}
-                onListenMarathi={handleListenMarathi}
-                onPauseNarration={handlePauseNarration}
-                onPlayNarration={handlePlayNarration}
-                onReplayNarration={handleReplayNarration}
-                onResumeNarration={handleResumeNarration}
-                onSectionSelect={handleGuideSectionSelect}
-                onStopNarration={handleStopNarration}
-                place={place}
-                speechSupported={speechSupported}
-                weather={weatherState.data}
-              />
-            )}
+                {activeTab === 'AI Guide' && (
+                  <PlaceAIGuideTab
+                    activeSectionId={activeGuideSectionId}
+                    captions={captions}
+                    guideData={guideData}
+                    isPaused={isPaused}
+                    isSpeaking={isSpeaking}
+                    onListenEnglish={handleListenEnglish}
+                    onListenMarathi={handleListenMarathi}
+                    onPauseNarration={handlePauseNarration}
+                    onPlayNarration={handlePlayNarration}
+                    onReplayNarration={handleReplayNarration}
+                    onResumeNarration={handleResumeNarration}
+                    onSectionSelect={handleGuideSectionSelect}
+                    onStopNarration={handleStopNarration}
+                    place={place}
+                    speechSupported={speechSupported}
+                    weather={weatherState.data}
+                  />
+                )}
 
-            {activeTab === 'AR Tour' && (
-              <PlaceARTourTab aiContent={aiContent} captions={captions} gallery={gallery} place={place} />
-            )}
+                {activeTab === 'Nearby Services' && (
+                  <PlaceNearbyTab
+                    placeLocation={getPlaceLocation(place)}
+                  />
+                )}
+              </div>
 
-            {activeTab === 'Nearby Services' && (
-              <PlaceNearbyTab
-                placeLocation={getPlaceLocation(place)}
-              />
-            )}
+              <div className="hidden xl:block">
+                <PlaceReviewPanel place={place} />
+              </div>
+            </div>
           </section>
-
-          {/* Right Sidebar - Action Card */}
-          <PlaceActionCard
-            geofenceState={geofenceState}
-            guideLoading={guideLoading}
-            isInsideGeofence={isInsideGeofence}
-            location={location}
-            onAddToWishlist={() => setSaved((current) => !current)}
-            onStartTour={handleStartTour}
-            onViewGuide={() => setActiveTab('AI Guide')}
-            onTravelersChange={setTravelers}
-            onVisitDateChange={setVisitDate}
-            price={price}
-            place={place}
-            saved={saved}
-            score={score}
-            travelers={travelers}
-            visitDate={visitDate}
-          />
         </div>
       </div>
 

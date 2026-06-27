@@ -1,48 +1,18 @@
 import PropTypes from 'prop-types';
-import ARViewer from '../ar/ARViewer';
-import AROverlay from '../ar/AROverlay';
 import AudioPlayer from '../common/AudioPlayer';
 
-const LOCAL_AR_MODELS = {
-  rajgad: '/models/rajgad-fort.gltf',
-  'rajgad-fort': '/models/rajgad-fort.gltf',
-  sinhagad: '/models/sinhagad-fort.gltf',
-  'sinhagad-fort': '/models/sinhagad-fort.gltf',
-  'shaniwar-wada': '/models/shaniwar-wada.gltf'
-};
-
-function normalizePlaceKey(value) {
-  return String(value || '').toLowerCase().trim().replace(/\s+/g, '-');
-}
-
-function resolveARModelUrl(aiContent, place) {
-  const directUrl = aiContent?.ar_model_url || place?.ar_model_url;
-
-  if (directUrl) {
-    return directUrl;
-  }
-
-  const keys = [place?.place_id, place?.id, place?.slug, place?.name]
-    .map(normalizePlaceKey)
-    .filter(Boolean);
-
-  return keys.map((key) => LOCAL_AR_MODELS[key]).find(Boolean) || '';
-}
-
 /**
- * Full place information block with AI media, AR view, and narrated captioning.
+ * Full place information block with AI media and narrated captioning.
  */
 export default function PlaceDetail({
   aiContent,
   audioSource,
-  captions,
   guideLoading,
   isInsideGeofence,
   onStartTour,
   place
 }) {
   const gallery = aiContent?.images || place?.images || [];
-  const arModelUrl = resolveARModelUrl(aiContent, place);
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
@@ -103,25 +73,6 @@ export default function PlaceDetail({
           </div>
         </div>
 
-        <div className="panel p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="font-heading text-2xl text-white">Immersive AR Guide</h2>
-              <p className="mt-1 text-sm text-slate-400">Preview the destination in augmented reality.</p>
-            </div>
-          </div>
-
-          <ARViewer
-            alt={`${place?.name || 'Place'} AR model`}
-            iosSrc={aiContent?.ar_ios_model_url || aiContent?.ios_model_url || place?.ar_ios_model_url || place?.ios_model_url}
-            poster={gallery[0]}
-            src={arModelUrl}
-          />
-
-          <div className="mt-4">
-            <AROverlay caption={captions} />
-          </div>
-        </div>
       </section>
 
       <section className="space-y-6">
@@ -153,7 +104,7 @@ export default function PlaceDetail({
           <div className="mt-4 space-y-3 text-sm text-slate-300">
             <div className="rounded-[12px] border border-white/10 bg-white/5 p-4">
               <p className="font-semibold text-white">Best for</p>
-              <p className="mt-1">{place?.best_for || 'History walks, guided narration, and AR storytelling.'}</p>
+              <p className="mt-1">{place?.best_for || 'History walks, guided narration, and local storytelling.'}</p>
             </div>
             <div className="rounded-[12px] border border-white/10 bg-white/5 p-4">
               <p className="font-semibold text-white">Open hours</p>
@@ -173,28 +124,21 @@ export default function PlaceDetail({
 PlaceDetail.propTypes = {
   aiContent: PropTypes.shape({
     ai_video_url: PropTypes.string,
-    ar_ios_model_url: PropTypes.string,
-    ar_model_url: PropTypes.string,
     description: PropTypes.string,
     images: PropTypes.arrayOf(PropTypes.string),
-    ios_model_url: PropTypes.string,
     summary: PropTypes.string,
     tts_audio: PropTypes.string
   }),
   audioSource: PropTypes.string,
-  captions: PropTypes.string,
   guideLoading: PropTypes.bool,
   isInsideGeofence: PropTypes.bool,
   onStartTour: PropTypes.func.isRequired,
   place: PropTypes.shape({
-    ar_model_url: PropTypes.string,
-    ar_ios_model_url: PropTypes.string,
     best_for: PropTypes.string,
     category: PropTypes.string,
     description: PropTypes.string,
     hours: PropTypes.string,
     images: PropTypes.arrayOf(PropTypes.string),
-    ios_model_url: PropTypes.string,
     name: PropTypes.string,
     rating: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     type: PropTypes.string
@@ -204,7 +148,6 @@ PlaceDetail.propTypes = {
 PlaceDetail.defaultProps = {
   aiContent: null,
   audioSource: '',
-  captions: '',
   guideLoading: false,
   isInsideGeofence: false,
   place: null

@@ -1,7 +1,7 @@
 {
   "name": "TourVision - AI Tourist Guide App",
   "short_name": "TourVision",
-  "description": "AI-powered tourist guide with AR, route planning, QR experiences, and offline-ready place pages.",
+  "description": "AI-powered tourist guide with route planning, QR experiences, audio guides, and offline-ready place pages.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0B1F19",

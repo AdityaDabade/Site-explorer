@@ -5,30 +5,31 @@ import PropTypes from 'prop-types';
  */
 export default function PlaceOverviewTab({ aiContent, place }) {
   return (
-    <div className="space-y-6">
+    <div className="place-tab-surface space-y-6">
       <div>
-        <h3>About this place</h3>
-        <p className="mt-3 text-[var(--c-text-secondary)]">
+        <p className="place-section-kicker">Overview</p>
+        <h3 className="mt-1 text-2xl font-black text-slate-950">About this place</h3>
+        <p className="mt-3 max-w-3xl text-base font-medium leading-8 text-slate-600">
           {aiContent?.description || place?.description || 'Detailed place information is being prepared.'}
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <div className="card card-bordered p-5">
-          <p className="text-sm font-semibold">Best for</p>
-          <p className="mt-2 text-sm text-[var(--c-text-secondary)]">
+        <div className="overview-info-card">
+          <p className="text-sm font-black text-slate-950">Best for</p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
             {place?.best_for || 'History walks and immersive storytelling'}
           </p>
         </div>
-        <div className="card card-bordered p-5">
-          <p className="text-sm font-semibold">Opening hours</p>
-          <p className="mt-2 text-sm text-[var(--c-text-secondary)]">
+        <div className="overview-info-card">
+          <p className="text-sm font-black text-slate-950">Opening hours</p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
             {place?.hours || 'Check local timings before visiting'}
           </p>
         </div>
-        <div className="card card-bordered p-5">
-          <p className="text-sm font-semibold">Entry type</p>
-          <p className="mt-2 text-sm text-[var(--c-text-secondary)]">
+        <div className="overview-info-card">
+          <p className="text-sm font-black text-slate-950">Entry type</p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
             {Number(place?.price || place?.entry_fee || 0) === 0 ? 'Free entry' : `Rs ${place?.price || place?.entry_fee} / person`}
           </p>
         </div>

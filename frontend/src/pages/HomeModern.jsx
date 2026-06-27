@@ -30,7 +30,6 @@ const FALLBACK_PLACES = [
     review_count: 2341,
     price: 0,
     free_entry: true,
-    has_ar: true,
     image: "https://images.unsplash.com/photo-1477587458883-47145ed94245?w=900&auto=format&fit=crop&q=80",
     score: 9.1,
   },
@@ -43,7 +42,6 @@ const FALLBACK_PLACES = [
     review_count: 1820,
     price: 0,
     free_entry: true,
-    has_ar: false,
     image: "https://commons.wikimedia.org/wiki/Special:FilePath/Shaniwar_Wada_Pune.jpg?width=900",
     score: 8.9,
   },
@@ -56,7 +54,6 @@ const FALLBACK_PLACES = [
     review_count: 3011,
     price: 300,
     free_entry: false,
-    has_ar: true,
     image: "https://images.unsplash.com/photo-1587474260584-136574528ed5?w=900&auto=format&fit=crop&q=80",
     score: 9.4,
   },
@@ -69,7 +66,6 @@ const FALLBACK_PLACES = [
     review_count: 954,
     price: 0,
     free_entry: true,
-    has_ar: false,
     image: "https://commons.wikimedia.org/wiki/Special:FilePath/Sinhagad-Fort.jpg?width=900",
     score: 8.8,
   },
@@ -85,7 +81,6 @@ function normalizePlace(place, index) {
     review_count: place.review_count || place.reviews || 1200,
     price: Number(place.price || place.entry_fee || 0),
     free_entry: Number(place.price || place.entry_fee || 0) === 0,
-    has_ar: Boolean(place.has_ar || place.ar_model_url),
     image: resolvePlaceImage(place, FALLBACK_PLACES[index % FALLBACK_PLACES.length].image),
     score: Number(place.score || 8.7 + (index % 5) * 0.2).toFixed(1),
   };
@@ -118,11 +113,6 @@ function PlaceCard({ place, onOpen, onToggleSave, saved }) {
         />
         {/* Badges */}
         <div className="absolute top-3 left-3 flex flex-wrap gap-2">
-          {place.has_ar && (
-            <span className="rounded-full bg-white/90 backdrop-blur px-2.5 py-1 text-xs font-semibold text-slate-700">
-              ✨ AR
-            </span>
-          )}
           {place.free_entry && (
             <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
               FREE
@@ -175,7 +165,6 @@ PlaceCard.propTypes = {
   place: PropTypes.shape({
     distance: PropTypes.number,
     free_entry: PropTypes.bool,
-    has_ar: PropTypes.bool,
     id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
     image: PropTypes.string.isRequired,
     location_name: PropTypes.string,

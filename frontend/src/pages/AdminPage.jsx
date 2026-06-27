@@ -760,7 +760,7 @@ export default function AdminPage() {
             </section>
             <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <h3 className="text-xl font-extrabold">Upload Content Assets</h3>
-              <p className="mt-1 text-sm text-slate-500">Manage images, videos, AI content, and AR references from this centralized library.</p>
+              <p className="mt-1 text-sm text-slate-500">Manage images, videos, and AI content from this centralized library.</p>
               <input className="mt-5 field" type="file" multiple accept="image/*,video/*,audio/*" onChange={handleMediaUpload} />
             </div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

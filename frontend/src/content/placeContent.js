@@ -17,8 +17,6 @@ export const PLACE_CONTENT = {
     price: 0,
     entry_fee: 0,
     score: 9.2,
-    has_ar: true,
-    ar_model_url: '/models/rajgad-fort.gltf',
     has_ai_content: true,
     ai_content_available: true,
     image: '/images/rajgad-fort.jpg',
@@ -64,8 +62,6 @@ export const PLACE_CONTENT = {
     best_for: 'Short treks, monsoon views, fort history, and local food stalls',
     rating: 4.6,
     score: 9,
-    has_ar: true,
-    ar_model_url: '/models/sinhagad-fort.gltf',
     has_ai_content: true,
     ai_content_available: true,
     image: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?w=900&auto=format&fit=crop&q=80',
@@ -100,8 +96,6 @@ export const PLACE_CONTENT = {
     best_for: 'Architecture, city heritage, evening visits, and photography',
     rating: 4.4,
     score: 8.8,
-    has_ar: true,
-    ar_model_url: '/models/shaniwar-wada.gltf',
     has_ai_content: true,
     ai_content_available: true,
     image: 'https://images.unsplash.com/photo-1595815771614-ade9d652a65d?w=900&auto=format&fit=crop&q=80',
@@ -149,8 +143,7 @@ export function clonePlaceContent(content) {
       description: content.description,
       summary: content.sections?.[0]?.content || content.description,
       images: [...(content.images || [])],
-      videos: [...(content.videos || [])],
-      ar_model_url: content.ar_model_url || ''
+      videos: [...(content.videos || [])]
     }
   };
 }

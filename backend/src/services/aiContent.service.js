@@ -948,7 +948,6 @@ Return only JSON with this shape:
     summary: cleanAiDisplayText(generated.summary),
     facts: Array.isArray(generated.facts) ? generated.facts.map(cleanAiDisplayText) : [],
     images: place.images || [],
-    ar_model_url: place.ar_model_url || "",
     source: "gemini"
   };
 }

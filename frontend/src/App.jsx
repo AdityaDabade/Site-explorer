@@ -4,6 +4,7 @@ import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import Navbar from './components/layout/Navbar';
 import Sidebar from './components/layout/Sidebar';
 import BottomNav from './components/layout/BottomNav';
+import Footer from './components/layout/Footer';
 import ChatWindow from './components/chat/ChatWindow';
 import Loader from './components/common/Loader';
 import ProgressBar from './components/common/ProgressBar';
@@ -27,6 +28,7 @@ const TripDetailsPage = lazy(() => import('./pages/TripDetailsPage'));
 const SavedPage = lazy(() => import('./pages/SavedPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+const FeedbackPage = lazy(() => import('./pages/FeedbackPage'));
 
 /**
  * Error boundary used for high-value route surfaces such as place and trip planner pages.
@@ -196,7 +198,7 @@ function AppFrame() {
 
       <div
         className={[
-          'relative transition-all duration-300',
+          'relative flex min-h-screen flex-col transition-all duration-300',
           isAdminRoute ? '' : 'lg:pl-16'
         ].join(' ')}
       >
@@ -217,9 +219,11 @@ function AppFrame() {
           </div>
         ) : null}
 
-        <main className={`${isAdminRoute ? 'pb-24' : 'pb-24'} lg:pb-10`}>
+        <main className={`${isAdminRoute ? 'pb-24' : 'pb-24'} flex-1 lg:pb-10`}>
           <Outlet />
         </main>
+
+        {!isAdminRoute ? <Footer /> : null}
       </div>
 
       <div className="fixed left-1/2 top-20 z-40 w-[calc(100%-2rem)] max-w-md -translate-x-1/2">
@@ -378,6 +382,14 @@ export default function App() {
             }
           />
         </Route>
+        <Route
+          path="/feedback"
+          element={
+            <LazyPage>
+              <FeedbackPage />
+            </LazyPage>
+          }
+        />
 
         <Route element={<ProtectedRoute requiredRole="admin" />}>
           <Route path="/admin" element={<Navigate replace to="/admin/dashboard" />} />

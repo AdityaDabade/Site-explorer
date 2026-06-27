@@ -42,7 +42,6 @@ function NearbyPlaceCard({ onOpen, onToggleSave, place, saved }) {
 
         <div className="mt-2 flex flex-wrap gap-2">
           <span className="badge badge-neutral">{place.category}</span>
-          {place.has_ar ? <span className="badge badge-teal">AR Available</span> : null}
         </div>
 
         <div className="mt-2 text-[13px] text-[var(--c-text-secondary)]">
@@ -64,7 +63,6 @@ NearbyPlaceCard.propTypes = {
     category: PropTypes.string,
     distance: PropTypes.number,
     free_entry: PropTypes.bool,
-    has_ar: PropTypes.bool,
     id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
     image: PropTypes.string.isRequired,
     location_name: PropTypes.string,

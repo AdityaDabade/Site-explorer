@@ -9,7 +9,7 @@ import { useLocationContext } from '../context/LocationContext';
 import { scorePlace } from '../utils/scoreUtils';
 import { normalizePlace } from '../utils/normalizePlace';
 
-const FILTER_CHIPS = ['All', 'Monuments', 'Nature', 'Food', 'AR', 'Free Entry', 'Near Me'];
+const FILTER_CHIPS = ['All', 'Monuments', 'Nature', 'Food', 'Free Entry', 'Near Me'];
 
 /**
  * Airbnb-style explore results page with filters, map split, and mobile map sheet.
@@ -73,9 +73,7 @@ export default function ExplorePage() {
       })
     }));
 
-    if (activeChip === 'AR') {
-      filtered = filtered.filter((place) => place.has_ar);
-    } else if (activeChip === 'Free Entry') {
+    if (activeChip === 'Free Entry') {
       filtered = filtered.filter((place) => Number(place.price || 0) === 0);
     } else if (activeChip === 'Near Me') {
       filtered = filtered.filter((place) => Number(place.distance || 0) <= 3);
@@ -159,7 +157,6 @@ export default function ExplorePage() {
                   <div className="mt-3 space-y-2 text-sm text-[var(--c-text-secondary)]">
                     <label className="flex items-center gap-2"><input type="checkbox" /> Free cancellation</label>
                     <label className="flex items-center gap-2"><input type="checkbox" /> Instant confirmation</label>
-                    <label className="flex items-center gap-2"><input type="checkbox" /> AR available</label>
                   </div>
                 </div>
                 <div>

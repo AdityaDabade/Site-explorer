@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import QRScanner from "../components/qr/QRScanner";
+import { FeedbackSection } from "./FeedbackPage";
 import { parsePlaceIdFromImageResult } from "../utils/qr";
 import { openQrHeritagePage } from "../utils/qrNavigation";
 
@@ -41,9 +42,9 @@ const FEATURES = [
     accent: "from-emerald-500 to-teal-500"
   },
   {
-    icon: "AR",
-    title: "AR Experience",
-    body: "Open immersive AR videos and visual experiences from place pages.",
+    icon: "AI",
+    title: "AI Guide",
+    body: "Open narrated heritage sections and visual place experiences from place pages.",
     accent: "from-amber-400 to-orange-500"
   },
   {
@@ -60,7 +61,7 @@ const POPULAR_FORTS = [
     name: "Rajgad",
     location: "Pune, Maharashtra",
     image: "/images/rajgad-fort.jpg",
-    body: "A Maratha capital fort with AI narration, guided sections, and AR-ready exploration."
+    body: "A Maratha capital fort with AI narration, guided sections, and place-aware exploration."
   },
   {
     id: "sinhagad",
@@ -76,6 +77,7 @@ const POPULAR_FORTS = [
     image: "https://commons.wikimedia.org/wiki/Special:FilePath/Shaniwar_Wada_Pune.jpg?width=900",
     body: "A city heritage landmark built for short exploration flows, QR scans, and AI context."
   }
+  
 ];
 
 const WORKFLOW = [
@@ -184,6 +186,7 @@ DestinationCard.propTypes = {
 
 export default function Home() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [scannerOpen, setScannerOpen] = useState(false);
 
   useEffect(() => {
@@ -191,6 +194,16 @@ export default function Home() {
     window.addEventListener("tourvision:open-qr", openScanner);
     return () => window.removeEventListener("tourvision:open-qr", openScanner);
   }, []);
+
+  useEffect(() => {
+    if (!location.hash) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      document.querySelector(location.hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
+  }, [location.hash]);
 
   const handleQrDetected = async (decodedText) => {
     const opened = await openQrHeritagePage(decodedText, navigate);
@@ -312,7 +325,7 @@ export default function Home() {
               Built for intelligent travel exploration.
             </h2>
             <p className="mt-4 text-base leading-7 text-slate-600">
-              The homepage now highlights the core app flows: QR discovery, AI narration, nearby places, trip planning, live expenses, and AR experiences.
+              The homepage now highlights the core app flows: QR discovery, AI narration, nearby places, trip planning, live expenses, and smart recommendations.
             </p>
           </div>
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -345,6 +358,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <FeedbackSection embedded />
 
       <section className="relative overflow-hidden bg-slate-950 py-16 text-white sm:py-20">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-teal-300/60 to-transparent" />

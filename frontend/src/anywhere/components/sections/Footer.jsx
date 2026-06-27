@@ -1,5 +1,5 @@
 const FOOTER_LINKS = {
-  Discover: ['Trending places', 'Collections', 'AR experiences', 'Nearby guides'],
+  Discover: ['Trending places', 'Collections', 'Audio guides', 'Nearby guides'],
   Company: ['About', 'Careers', 'Partners', 'Press'],
   Support: ['Help Center', 'Accessibility', 'Cancellation options', 'Contact us'],
 };
@@ -16,7 +16,7 @@ export default function Footer() {
           <div>
             <p className="font-heading text-2xl font-extrabold">TourVision</p>
             <p className="mt-4 max-w-[260px] text-white/65">
-              Travel with AI-powered stories, AR experiences, and smart planning from
+              Travel with AI-powered stories, audio guides, and smart planning from
               discovery to arrival.
             </p>
           </div>

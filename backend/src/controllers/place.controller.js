@@ -730,7 +730,6 @@ const getPlaceAiContent = asyncHandler(async (req, res) => {
         history: place.history || place.ai_content?.history,
         architecture: place.architecture || place.ai_content?.architecture,
         summary: place.ai_content?.overview || place.description,
-        ar_model_url: place.ar_model_url || "",
         tts_audio_url: "",
       },
     });
@@ -752,7 +751,6 @@ const getPlaceAiContent = asyncHandler(async (req, res) => {
   return success(res, {
     content: {
       ...place.ai_content,
-      ar_model_url: place.ai_content?.ar_model_url || place.ar_model_url || "",
       tts_audio_url: place.ai_content?.tts_audio || "",
     },
   });

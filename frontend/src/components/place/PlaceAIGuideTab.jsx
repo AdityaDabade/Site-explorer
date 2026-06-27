@@ -120,19 +120,19 @@ export default function PlaceAIGuideTab({ place }) {
   };
 
   return (
-    <section className="rounded-lg border border-sky-100 bg-white p-6 shadow-[var(--shadow-card)]">
+    <section className="place-tab-surface">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-wide text-sky-700">AI Heritage Guide</p>
-        <h3 className="mt-1 text-xl font-bold text-slate-950">Ask About This Monument</h3>
+        <p className="place-section-kicker">AI Heritage Guide</p>
+        <h3 className="mt-1 text-2xl font-black text-slate-950">Ask About This Monument</h3>
       </div>
 
-      <div ref={scrollRef} className="mt-5 max-h-96 space-y-3 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <div ref={scrollRef} className="mt-5 max-h-96 space-y-3 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`rounded-lg px-4 py-3 text-sm leading-6 ${
+            className={`rounded-2xl px-4 py-3 text-sm font-semibold leading-6 shadow-sm ${
               message.role === 'user'
-                ? 'ml-auto max-w-[85%] bg-teal-600 text-white'
+                ? 'ml-auto max-w-[85%] bg-teal-700 text-white'
                 : 'mr-auto max-w-[92%] border border-slate-200 bg-white text-slate-700'
             }`}
           >
@@ -142,12 +142,12 @@ export default function PlaceAIGuideTab({ place }) {
         {loading ? <Loader label="Preparing heritage context..." size="sm" /> : null}
       </div>
 
-      <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+      <div className="no-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1">
         {QUICK_SUGGESTIONS.map((suggestion) => (
           <button
             key={suggestion.label}
             type="button"
-            className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:border-sky-300 hover:text-sky-700 disabled:cursor-wait disabled:opacity-60"
+            className="shrink-0 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-700 shadow-sm transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-800 disabled:cursor-wait disabled:opacity-60"
             disabled={loading}
             onClick={() => {
               if (suggestion.focusInput) {
